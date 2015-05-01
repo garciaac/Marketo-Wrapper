@@ -1,15 +1,4 @@
 ***************************************************************************************************
-curl -G -d client_id=a4e379b7-b139-49c6-a2e6-aa485f15ef16 -d client_secret=A7nXl10KIuz5TXTTtddZoTskszNwMfPR https://679-WJZ-355.mktorest.com/identity/oauth/token?grant_type=client_credentials | jq .access_token > token.txt
-
-curl -i -F format=csv -F file=@~/Box\ Sync/Documents/_Dev/Database\ Integration/mongodb_setup/Dummy\ Data\ Marketo.csv -F access_token="$(sed s/\"//g token.txt)" https://679-WJZ-355.mktorest.com/rest/bulk/v1/leads.json
-***************************************************************************************************
-
-
-
-
-
-
-***************************************************************************************************
 curl -G -d client_id=<Client ID> -d client_secret=<Client Secret> https://<Munchkin ID>.mktorest.com/identity/oauth/token?grant_type=client_credentials | jq .access_token > <token file>.txt
 
 curl -i -F format=csv -F file=@<file>.csv -F access_token="$(sed s/\"//g <token file>.txt)" https://<Munchkin ID>.mktorest.com/rest/bulk/v1/leads.json
