@@ -1,0 +1,1 @@
+{"access_token":"6bf4a566-f989-4a48-adf0-70e7f759b719:ab","token_type":"bearer","expires_in":3429,"scope":"api@whatever.com"}

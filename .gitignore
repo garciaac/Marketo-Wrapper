@@ -1,3 +1,11 @@
+# Custom files
+.http_cache/
+undocumented/
+__init__.py
+mongodb_setup/
+mongo_wrapper.py
+marketo_connector.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
