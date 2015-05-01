@@ -81,7 +81,7 @@ class MarketoWrapper:
         else:
             print(str(response.status)+"\n"+response.reason)
 
-    def __generic_api_call(self, call, method, payload, headers):
+    def __generic_api_call(self, call, method, payload=None, headers=None):
         """
         This method executes a generic API call to the REST API endpoint. The correct syntax
         should be passed into this method from inside of each call wrapper. 
@@ -94,6 +94,14 @@ class MarketoWrapper:
             headers_ (dict):     Any custom headers to send. The access token is added automatically
                                  inside the method, so it does not need to be added manually from outside.
         """
+        
+        # Default parameters in Python work differently than in other languages. See
+        # this link for a full description: http://effbot.org/zone/default-values.htm
+        if payload is None:
+            payload = {}
+        if headers is None:
+            headers = {}
+        
         # Check to see if the token has expired. If so, generate a new one.
         if self.__expire_time < time.time():
             self.__token = self.__generateAccessToken(self.__munchkin)
@@ -108,7 +116,7 @@ class MarketoWrapper:
         # Make the API call. Make sure to use json.dumps() on the payload since httplib2 does
         # not automatically serialize the data.
         response, content = self.__http.request("https://"+self.__munchkin+".mktorest.com/"+
-                                               call, method, headers, payload)
+                                               call, method, json.dumps(payload), headers)
         
         # If the call was successful, return the content retrieved from the server.
         if (response.status == 200):
@@ -148,7 +156,7 @@ class MarketoWrapper:
         call = "rest/v1/leads.json"
         method = "POST"
         payload = {"input": leads}
-        return self.__generic_api_call(call, method, payload, {})
+        return self.__generic_api_call(call, method, payload)
         
     def merge_lead(self, winner, loser):
         """
@@ -164,7 +172,7 @@ class MarketoWrapper:
         """
         call = "rest/v1/leads/"+leadID+"/merge.json"
         method = "POST"
-        return self.__generic_api_call(call, method, {}, {})
+        return self.__generic_api_call(call, method)
     
     def get_lead_by_id(self, lead):
         """
@@ -178,7 +186,7 @@ class MarketoWrapper:
         """
         call = "/rest/v1/lead/"+lead+".json"
         method = "GET"
-        return self.__generic_api_call(call, method, {}, {})
+        return self.__generic_api_call(call, method)
     
     def get_email_by_id(self, email):
         """
@@ -192,7 +200,7 @@ class MarketoWrapper:
         """
         call = "rest/asset/v1/email/"+email+".json"
         method = "GET"
-        return self.__generic_api_call(call, method, {}, {})
+        return self.__generic_api_call(call, method)
     
     
     # This doesn't work
@@ -226,6 +234,8 @@ if __name__ == "__main__":
     client_id = "a4e379b7-b139-49c6-a2e6-aa485f15ef16"
     client_secret = "A7nXl10KIuz5TXTTtddZoTskszNwMfPR"
     marketo = MarketoWrapper(munchkin, client_id, client_secret)
+    
+    print(marketo.get_email_by_id("1069"))
         
-    print(marketo.create_email_template("api-email-template", "14"))
+    #print(marketo.create_email_template("api-email-template", "14"))
         
