@@ -4,6 +4,7 @@ import time
 import httplib2
 import json
 import logging
+import urllib.parse
 
 class MarketoWrapper:
     """
@@ -111,16 +112,13 @@ class MarketoWrapper:
         # Prevents mismatch errors by exlicitly requesting json
         headers["content-type"] =  "application/json"
         
-        print(json.dumps(headers))
-        
         # Make the API call. Make sure to use json.dumps() on the payload since httplib2 does
         # not automatically serialize the data.
         response, content = self.__http.request("https://"+self.__munchkin+".mktorest.com/"+
-                                               call, method, json.dumps(payload), headers)
+                                                    call, method, json.dumps(payload), headers)
         
         # If the call was successful, return the content retrieved from the server.
         if (response.status == 200):
-            print("successful")
             return content
         else:
             raise Exception(str(response.status)+"\n"+response.reason)
@@ -158,6 +156,7 @@ class MarketoWrapper:
         payload = {"input": leads}
         return self.__generic_api_call(call, method, payload)
         
+    # TODO - add merge in CRM option and support multiple losers
     def merge_lead(self, winner, loser):
         """
         This method makes the merge_lead call.
@@ -172,7 +171,9 @@ class MarketoWrapper:
         """
         call = "rest/v1/leads/"+leadID+"/merge.json"
         method = "POST"
-        return self.__generic_api_call(call, method)
+        headers = {}
+        headers["leadId"] = loser
+        return self.__generic_api_call(call, method, None, headers)
     
     def get_lead_by_id(self, lead):
         """
@@ -188,9 +189,24 @@ class MarketoWrapper:
         method = "GET"
         return self.__generic_api_call(call, method)
     
+    def get_emails(self):
+        """
+        This method gets a list of all the emails and their metadata
+        from the Marketo instance.
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emails.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
     def get_email_by_id(self, email):
         """
-        This method gets an email asset given its id
+        This method gets an email asset given its id.
         
         Args:
             email (string): The id of the desired email asset
@@ -202,9 +218,23 @@ class MarketoWrapper:
         method = "GET"
         return self.__generic_api_call(call, method)
     
+    def get_email_full_content(self, email):
+        """
+        This method gets an email asset's content given its id.
+        
+        Args:
+            email (string): The id of the desired email asset
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/email/"+email+"/content.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
     
     # This doesn't work
-    def create_email_template(self, name, folder):
+    def create_email_template(self, name, folder, template):
         """
         This method creates an email template from an HTML file
         
@@ -216,15 +246,14 @@ class MarketoWrapper:
         Returns:
             dict:   The response from the server
         """
-        print("inside function\n\n")
-        content = open("""C:/Users/angarcia/Box Sync/Documents/_Dev/Asset API Tests/Email_Nurture_program_Email_Nurture_2 (1).html""").read()
+        content = open(template).read()
         
         call = "rest/asset/v1/emailTemplates.json"
         method = "POST"
-        headers = {}
         payload = {}
-        headers["name"] = name
-        headers["folder"] = folder
+        headers = {}
+        payload["name"] = name
+        payload["folder"] = folder
         payload["content"] = content
         return self.__generic_api_call(call, method, payload, headers)
     
@@ -234,8 +263,8 @@ if __name__ == "__main__":
     client_id = "a4e379b7-b139-49c6-a2e6-aa485f15ef16"
     client_secret = "A7nXl10KIuz5TXTTtddZoTskszNwMfPR"
     marketo = MarketoWrapper(munchkin, client_id, client_secret)
-    
-    print(marketo.get_email_by_id("1069"))
         
-    #print(marketo.create_email_template("api-email-template", "14"))
+    print(marketo.get_lead_by_id("1000132"))    
+    
+#    print(marketo.create_email_template("api-email-template", "14", """Email_Nurture_program_Email_Nurture_2 (1).html"""))
         
