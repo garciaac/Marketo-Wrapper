@@ -102,7 +102,7 @@ class MarketoWrapper:
             payload = {}
         if headers is None:
             headers = {}
-        
+            
         # Check to see if the token has expired. If so, generate a new one.
         if self.__expire_time < time.time():
             self.__token = self.__generateAccessToken(self.__munchkin)
@@ -111,11 +111,10 @@ class MarketoWrapper:
         headers["authorization"] = "Bearer "+self.__token
         # Prevents mismatch errors by exlicitly requesting json
         headers["content-type"] =  "application/json"
-        
-        # Make the API call. Make sure to use json.dumps() on the payload since httplib2 does
-        # not automatically serialize the data.
+            
+        # Make the API call.
         response, content = self.__http.request("https://"+self.__munchkin+".mktorest.com/"+
-                                                    call, method, json.dumps(payload), headers)
+                                                    call, method, payload, headers)
         
         # If the call was successful, return the content retrieved from the server.
         if (response.status == 200):
@@ -154,7 +153,9 @@ class MarketoWrapper:
         call = "rest/v1/leads.json"
         method = "POST"
         payload = {"input": leads}
-        return self.__generic_api_call(call, method, payload)
+        # Use json.dumps() because the httplib2 does not serialize dictionary
+        # objects by default.
+        return self.__generic_api_call(call, method, json.dumps(payload))
         
     # TODO - add merge in CRM option and support multiple losers
     def merge_lead(self, winner, loser):
@@ -232,7 +233,6 @@ class MarketoWrapper:
         method = "GET"
         return self.__generic_api_call(call, method)
     
-    
     # This doesn't work
     def create_email_template(self, name, folder, template):
         """
@@ -246,17 +246,18 @@ class MarketoWrapper:
         Returns:
             dict:   The response from the server
         """
-        content = open(template).read()
+#        content = open(template).read()
         
         call = "rest/asset/v1/emailTemplates.json"
         method = "POST"
         payload = {}
-        headers = {}
         payload["name"] = name
         payload["folder"] = folder
-        payload["content"] = content
-        return self.__generic_api_call(call, method, payload, headers)
+#        payload["files"] = {"template.html": open(template).read()}
+        return self.__generic_api_call(call, method, json.dumps(payload))
     
+    
+     
 if __name__ == "__main__":
     logging.basicConfig(filename="logs.log", filemode="w", level=logging.DEBUG)
     munchkin = "679-WJZ-355"
@@ -266,5 +267,4 @@ if __name__ == "__main__":
         
     print(marketo.get_lead_by_id("1000132"))    
     
-#    print(marketo.create_email_template("api-email-template", "14", """Email_Nurture_program_Email_Nurture_2 (1).html"""))
-        
+#    print(marketo.create_email_template("api-email-template", "15", """test-template.html"""))        
