@@ -81,7 +81,7 @@ class MarketoWrapper:
         else:
             print(str(response.status)+"\n"+response.reason)
 
-    def __generic_api_call(self, call, method, payload=None, headers=None):
+    def __generic_api_call(self, call, method, content_type=None, payload=None, headers=None):
         """
         This method executes a generic API call to the REST API endpoint. The correct syntax
         should be passed into this method from inside of each call wrapper. 
@@ -97,6 +97,8 @@ class MarketoWrapper:
         
         # Default parameters in Python work differently than in other languages. See
         # this link for a full description: http://effbot.org/zone/default-values.htm
+        if content_type is None:
+            content_type = "application/json"
         if payload is None:
             payload = {}
         if headers is None:
@@ -109,7 +111,7 @@ class MarketoWrapper:
         # Add the access token to the HTTP header. 
         headers["authorization"] = "Bearer "+self.__token
         # Prevents mismatch errors by exlicitly requesting json
-        headers["content-type"] =  "application/json"
+        headers["content-type"] =  content_type
             
         # Make the API call.
         response, content = self.__http.request("https://"+self.__munchkin+".mktorest.com/"+
@@ -250,10 +252,13 @@ class MarketoWrapper:
         call = "rest/asset/v1/emailTemplates.json"
         method = "POST"
         payload = {}
+        headers = {}
+
+#        payload["content"] = open(template).read()
         payload["name"] = name
         payload["folder"] = folder
-#        payload["files"] = {"template.html": open(template).read()}
-        return self.__generic_api_call(call, method, json.dumps(payload))
+        print(json.dumps(payload))
+        return self.__generic_api_call(call, method, "multipart/form-data", json.dumps(payload), headers)
     
     
      
