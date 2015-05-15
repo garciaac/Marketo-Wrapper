@@ -4,6 +4,9 @@ import time
 import httplib2
 import json
 import logging
+import poster
+#import urllib.parse
+import urllib2
 
 class MarketoWrapper:
     """
@@ -109,9 +112,14 @@ class MarketoWrapper:
             self.__token = self.__generateAccessToken(self.__munchkin)
         
         # Add the access token to the HTTP header. 
-        headers["authorization"] = "Bearer "+self.__token
+        headers["Authorization"] = "Bearer "+self.__token
         # Prevents mismatch errors by exlicitly requesting json
-        headers["content-type"] =  content_type
+        headers["Content-type"] =  content_type
+        
+        print(call)
+        print(method)
+        print(payload)
+        print(headers)
             
         # Make the API call.
         response, content = self.__http.request("https://"+self.__munchkin+".mktorest.com/"+
@@ -137,7 +145,7 @@ class MarketoWrapper:
 
 ############################################################################################
 #                                                                                          #
-#                                      API Calls                                           # 
+#                              Lead/Campaign API Calls                                     # 
 #                                                                                          #             
 ############################################################################################
     
@@ -190,7 +198,13 @@ class MarketoWrapper:
         call = "/rest/v1/lead/"+lead+".json"
         method = "GET"
         return self.__generic_api_call(call, method)
-    
+
+############################################################################################
+#                                                                                          #
+#                                  Asset API Calls                                         # 
+#                                                                                          #             
+############################################################################################
+
     def get_emails(self):
         """
         This method gets a list of all the emails and their metadata
@@ -220,7 +234,7 @@ class MarketoWrapper:
         method = "GET"
         return self.__generic_api_call(call, method)
     
-    def get_email_full_content(self, email):
+    def get_email_content_by_id(self, email):
         """
         This method gets an email asset's content given its id.
         
@@ -231,6 +245,22 @@ class MarketoWrapper:
             dict:   The response from the server
         """
         call = "rest/asset/v1/email/"+email+"/content.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_email_content_by_section_id(self, email, section):
+        """
+        This method gets a specific section of an email asset's content 
+        given both the email and section ids.
+        
+        Args:
+            email (string):     The id of the desired email asset
+            section (string):   The id of the desired section
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/email/"+email+"/content/"+section+".json"
         method = "GET"
         return self.__generic_api_call(call, method)
     
@@ -246,21 +276,36 @@ class MarketoWrapper:
             template (string):  The filepath of the HTML file.
         Returns:
             dict:   The response from the server
-        """
-#        content = open(template).read()
-        
+        """        
         call = "rest/asset/v1/emailTemplates.json"
         method = "POST"
         payload = {}
-        headers = {}
+
+#        payload["content"] = open(template)
+#        payload["name"] = name
+#        payload["folder"] = folder
+#        return self.__generic_api_call(call, method, "multipart/form-data", urllib.urlencode(payload))
+
+        datagen, headers = poster.encode.multipart_encode({"content": open(template, "rb"),
+                                             "name": name,
+                                             "folder": folder})
+        headers["Authorization"] = "Bearer "+self.__token
+
+        # Create the Request object
+        request = urllib2.Request("http://localhost:5000/upload_image", datagen, headers)
+        # Actually do the request, and get the response
+        print urllib2.urlopen(request).read()
 
 #        payload["content"] = open(template).read()
-        payload["name"] = name
-        payload["folder"] = folder
-        print(json.dumps(payload))
-        return self.__generic_api_call(call, method, "multipart/form-data", json.dumps(payload), headers)
+#        payload["name"] = name
+#        payload["folder"] = folder
+#        return self.__generic_api_call(call, method, "application/x-www-form-urlencoded", urllib.parse.urlencode(payload))
     
-    
+############################################################################################
+#                                                                                          #
+#                                        Main                                              # 
+#                                                                                          #             
+############################################################################################
      
 if __name__ == "__main__":
     logging.basicConfig(filename="logs.log", filemode="w", level=logging.DEBUG)
@@ -272,4 +317,3 @@ if __name__ == "__main__":
 #    print(marketo.get_lead_by_id("1000132"))    
     
     print(marketo.create_email_template("api-email-template", "14", """test-template.html"""))
-        
