@@ -4,7 +4,6 @@ import time
 import httplib2
 import json
 import logging
-import urllib.parse
 
 class MarketoWrapper:
     """
@@ -265,6 +264,7 @@ if __name__ == "__main__":
     client_secret = "A7nXl10KIuz5TXTTtddZoTskszNwMfPR"
     marketo = MarketoWrapper(munchkin, client_id, client_secret)
         
-    print(marketo.get_lead_by_id("1000132"))    
+#    print(marketo.get_lead_by_id("1000132"))    
     
-#    print(marketo.create_email_template("api-email-template", "15", """test-template.html"""))        
+    print(marketo.create_email_template("api-email-template", "14", """test-template.html"""))
+        
