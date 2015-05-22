@@ -1,5 +1,0 @@
-***************************************************************************************************
-curl -G -d client_id=<Client ID> -d client_secret=<Client Secret> https://<Munchkin ID>.mktorest.com/identity/oauth/token?grant_type=client_credentials | jq .access_token > <token file>.txt
-
-curl -i -F format=csv -F file=@<file>.csv -F access_token="$(sed s/\"//g <token file>.txt)" https://<Munchkin ID>.mktorest.com/rest/bulk/v1/leads.json
-***************************************************************************************************

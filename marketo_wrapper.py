@@ -205,6 +205,7 @@ class MarketoWrapper:
         """
         call = "/rest/v1/lead/"+lead+".json"
         method = "GET"
+<<<<<<< Updated upstream
         return self.__generic_api_call(call, method)
 
 ############################################################################################
@@ -556,6 +557,7 @@ if __name__ == "__main__":
     client_secret = settings.CLIENT_SECRET
     marketo = MarketoWrapper(munchkin, client_id, client_secret)
         
+<<<<<<< Updated upstream
 #    print(marketo.get_lead_by_id("5"))
 
 #    print(marketo.get_email_templates())
