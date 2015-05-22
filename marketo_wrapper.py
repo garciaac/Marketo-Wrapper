@@ -12,6 +12,7 @@ from urllib import urlencode
 
 # Add return values to the Returns documentation
 # Allow for integer parameters
+# Non-English
 
 class MarketoWrapper:
     """
@@ -55,7 +56,7 @@ class MarketoWrapper:
         # used for initialization
         self.__expire_time = 0
         self.__token = self.__generateAccessToken(self.__munchkin)
-        
+        954-608-8765
 ############################################################################################
 #                                                                                          #
 #                                   Private Methods                                        # 
@@ -205,7 +206,6 @@ class MarketoWrapper:
         """
         call = "/rest/v1/lead/"+lead+".json"
         method = "GET"
-<<<<<<< Updated upstream
         return self.__generic_api_call(call, method)
 
 ############################################################################################
@@ -557,7 +557,6 @@ if __name__ == "__main__":
     client_secret = settings.CLIENT_SECRET
     marketo = MarketoWrapper(munchkin, client_id, client_secret)
         
-<<<<<<< Updated upstream
 #    print(marketo.get_lead_by_id("5"))
 
 #    print(marketo.get_email_templates())
