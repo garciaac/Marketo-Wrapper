@@ -5,6 +5,7 @@ __init__.py
 mongodb_setup/
 mongo_wrapper.py
 marketo_connector.py
+settings.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

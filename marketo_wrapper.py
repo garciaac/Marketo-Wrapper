@@ -5,8 +5,13 @@ import httplib2
 import json
 import logging
 import poster
-import urllib2
 import settings
+from urllib import urlencode
+
+# TODO
+
+# Add return values to the Returns documentation
+# Allow for integer parameters
 
 class MarketoWrapper:
     """
@@ -90,14 +95,14 @@ class MarketoWrapper:
         should be passed into this method from inside of each call wrapper. 
         
         Args:
-            call (string):       The actual API call to make. This method contains the endpoint itself,
-                                 but the desired call must be given from outside.
-            method (string):     The HTTP method to use (GET, POST, PUT etc.).
-            payload_ (string):   Any payload that should be sent to the server.
-            headers_ (dict):     Any custom headers to send. The access token is added automatically
-                                 inside the method, so it does not need to be added manually from outside.
+            call (string):                    The actual API call to make. This method contains the endpoint itself,
+                                              but the desired call must be given from outside.
+            method (string):                  The HTTP method to use (GET, POST, PUT etc.).
+            content_type (string, optional):  What to set as the Content-type HTTP header
+            payload (string, optional):       Any payload that should be sent to the server.
+            headers (dict, optional):         Any custom headers to send. The access token is added automatically
+                                              inside the method, so it does not need to be added manually from outside.
         """
-        
         # Default parameters in Python work differently than in other languages. See
         # this link for a full description: http://effbot.org/zone/default-values.htm
         if content_type is None:
@@ -114,11 +119,19 @@ class MarketoWrapper:
         # Add the access token to the HTTP header. 
         headers["Authorization"] = "Bearer "+self.__token
         # Prevents mismatch errors by exlicitly requesting json
-        headers["Content-type"] =  content_type
-            
+        headers["Content-type"] = content_type
+        
+        
+        print(call)
+        print(method)
+        print(content_type)
+        print(payload)
+        print(headers)
+        
+        
         # Make the API call.
         response, content = self.__http.request("https://"+self.__munchkin+".mktorest.com/"+
-                                                    call, method, payload, headers)
+                                                    call, method, body=payload, headers=headers)
         
         # If the call was successful, return the content retrieved from the server.
         if (response.status == 200):
@@ -140,7 +153,7 @@ class MarketoWrapper:
 
 ############################################################################################
 #                                                                                          #
-#                              Lead/Campaign API Calls                                     # 
+#                                   Lead API Calls                                         # 
 #                                                                                          #             
 ############################################################################################
     
@@ -196,7 +209,115 @@ class MarketoWrapper:
 
 ############################################################################################
 #                                                                                          #
-#                                  Asset API Calls                                         # 
+#                                Folder API Calls                                          # 
+#                                                                                          #             
+############################################################################################
+    
+    def browse_folders(self, root, offset=None, max_depth=None, max_return=None, workspace=None):
+        """
+        This method returns a list of folders in Marketo.
+        
+        Args:
+            root (int):                     The id of the parent folder
+            offset (int, optional):         Which index inside the parent to start from (default 0)
+            max_depth (int, optional):      Maximum levels of recursion (default 2)
+            max_return (int, optional):     Maximum folders to returns (default 20, max 200)
+            workspace (string, optional):   Which workspace to search in
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/folders.json?root="+str(root)
+        method = "GET"
+        
+        if offset is not None:
+            call += "&offSet="+str(offset)
+        if max_depth is not None:
+            call += "&maxDepth="+str(max_depth)
+        if max_return is not None:
+            call += "&maxReturn="+str(max_return)
+        if workspace is not None:
+            call += "&workSpace="+workspace
+        
+        return self.__generic_api_call(call, method)
+    
+    def get_folder_by_id(self, folder_id):
+        """
+        This method retrieves the metadata of the folder with the given id.
+        
+        Args:
+            folder_id (int):    The id of the folder
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/folder/"+str(folder_id)+".json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_folder_by_name(self, folder_name, root=None, workspace=None):
+        """
+        This method retrieves the metadata of the folder with the given name.
+        
+        Args:
+            folder_name (name):             The name of the folder
+            root (int, optional):           The id of the parent folder
+            workspace (string, optional):   The workspace that the folder is in
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/folder/byName.json?name="+folder_name
+        method = "GET"
+        
+        if root is not None:
+            call += "&root="+str(root)
+        if workspace is not None:
+            call += "&workSpace="+workspace
+        
+        return self.__generic_api_call(call, method)
+    
+    def create_folder(self, name, parent, description=None):
+        """
+        This method generates a folder inside of Marketo. Attributes such as
+        type, isArchive, path etc. are inherited from the parent folder. 
+        
+        Args:
+            name (string):                  The desired name of the folder
+            parent (int):                   The id of the parent folder
+            description (string, optional): A description of the folder
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/folders.json?name="+name+"&parent="+str(parent)
+        method = "POST"
+        
+        if description is not None:
+            call += "&description="+description
+            
+        return self.__generic_api_call(call, method)
+        
+    def delete_folder(self, folder_id):
+        """
+        This method deletes the folder with the given id.
+        
+        Args:
+            folder_id (int):    The id of the folder to be deleted
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/folder/"+str(folder_id)+"/delete.json"
+        method = "POST"
+        return self.__generic_api_call(call, method)
+    
+    def update_folder(self, description=None, name=None, isArchive=None):
+        pass
+        
+############################################################################################
+#                                                                                          #
+#                                  Email API Calls                                         # 
 #                                                                                          #             
 ############################################################################################
 
@@ -261,6 +382,169 @@ class MarketoWrapper:
     
 ############################################################################################
 #                                                                                          #
+#                             Email Template API Calls                                     # 
+#                                                                                          #             
+############################################################################################
+
+    def get_email_templates(self):
+        """
+        This method returns a list of all email templates.
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplates.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+
+    def get_email_template_by_name(self, template_name):
+        """
+        This method returns the meta data of the given email template
+        
+        Args:
+            template_name (string):   The name of the desired email template
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplate/byName.json?name="+template_name
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_email_template_by_id(self, template_id):
+        """
+        This method returns the meta data of the given email template
+        
+        Args:
+            template_id (string):   The id of the desired email template
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplate/"+template_id+".json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_email_template_content_by_id(self, template_id):
+        """
+        This method returns the HTML of the given email template
+        
+        Args:
+            template_id (string):   The id of the desired email template
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplate/"+template_id+"/content.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def update_email_template(self, template_id, name=None, description=None):
+        """
+        This method updates the name and/or description of the given email template
+        
+        Args:
+            template_id (string):             The id of the desired email template
+            name (string, optional):          The new name of the email template
+            description (string, optional):   The new description of the email template
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplate/"+template_id+".json"
+        method = "POST"
+        payload = {}
+        if name is not None:
+            payload["name"] = name
+        if description is not None:
+            payload["description"] = description
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def approve_email_template(self, template_id):
+        """
+        This method approves the given email template. This method also works on 
+        drafts that are created underneath the given template.
+        
+        Args:
+            template_id (string):   The id of the desired email template
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplate/"+template_id+"/approveDraft.json"
+        method = "POST"
+        return self.__generic_api_call(call, method)      
+    
+    def unapprove_email_template(self, template_id):
+        """
+        This method unapproves the given email template
+        
+        Args:
+            template_id (string):   The id of the desired email template
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplate/"+template_id+"/unapprove.json"
+        method = "POST"
+        return self.__generic_api_call(call, method)    
+    
+    def delete_email_template(self, template_id):
+        """
+        This method deletes the given email template
+        
+        Args:
+            template_id (string):   The id of the desired email template
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplate/"+template_id+"/delete.json"
+        method = "POST"
+        return self.__generic_api_call(call, method)
+    
+    def discard_email_template_draft(self, template_id):
+        """
+        This method discards the draft of the given email template
+        
+        Args:
+            template_id (string):   The id of the desired email template
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplate/"+template_id+"/discardDraft.json"
+        method = "POST"
+        return self.__generic_api_call(call, method)
+    
+#############################################################################################
+# TODO - This is actually fine. It's the dictionary in the API call that is mucking things up
+#############################################################################################
+    
+    def clone_email_template(self, template_id, name, folder):
+        """
+        This method clones the given email template
+        
+        Args:
+            template_id (string):   The id of the desired email template
+            name (string):          The name of the new email template
+            folder (string):        The destination folder for the new email template
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/emailTemplate/"+template_id+"/clone.json"
+        method = "POST"
+        payload = {}
+        payload["name"] = name
+        payload["folder"] = folder
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+############################################################################################
+#                                                                                          #
 #                                        Main                                              # 
 #                                                                                          #             
 ############################################################################################
@@ -272,5 +556,19 @@ if __name__ == "__main__":
     client_secret = settings.CLIENT_SECRET
     marketo = MarketoWrapper(munchkin, client_id, client_secret)
         
-    print(marketo.get_lead_by_id("5"))    
-    
+#    print(marketo.get_lead_by_id("5"))
+
+#    print(marketo.get_email_templates())
+#    print(marketo.get_email_template_by_name("delete me"))
+#    print(marketo.update_email_template("1011", description="sadfsdf"))
+#    print(marketo.approve_email_template("1014"))
+#    print(marketo.unapprove_email_template("1014"))
+#    print(marketo.delete_email_template("1014"))
+#    print(marketo.discard_email_template_draft("1014"))
+#    print(marketo.clone_email_template("1014", "delete me clone", "15"))
+
+#    print(marketo.browse_folders(129))
+#    print(marketo.create_folder("delete me", 129))
+#    print(marketo.delete_folder(178))
+#    print(marketo.get_folder_by_id(129))
+    print(marketo.get_folder_by_name("Blog"))
