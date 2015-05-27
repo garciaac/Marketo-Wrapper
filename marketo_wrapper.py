@@ -4,7 +4,6 @@ import time
 import httplib2
 import json
 import logging
-import poster
 import settings
 from urllib import urlencode
 
@@ -58,7 +57,7 @@ class MarketoWrapper:
         # used for initialization
         self.__expire_time = 0
         self.__token = self.__generateAccessToken(self.__munchkin)
-        
+
 ############################################################################################
 #                                                                                          #
 #                                   Private Methods                                        # 
@@ -105,6 +104,9 @@ class MarketoWrapper:
             payload (string, optional):       Any payload that should be sent to the server.
             headers (dict, optional):         Any custom headers to send. The access token is added automatically
                                               inside the method, so it does not need to be added manually from outside.
+        
+        Returns:
+        
         """
         # Default parameters in Python work differently than in other languages. See
         # this link for a full description: http://effbot.org/zone/default-values.htm
@@ -209,6 +211,20 @@ class MarketoWrapper:
         call = "/rest/v1/lead/"+lead+".json"
         method = "GET"
         return self.__generic_api_call(call, method)
+    
+    def get_lead_activity_types(self):
+        """
+        This method returns all of the possible activity types.
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "/rest/v1/activities/types.json"
+        method = "GET"
+        return self.__generica_api_call(call, method)
 
 ############################################################################################
 #                                                                                          #
@@ -688,3 +704,5 @@ if __name__ == "__main__":
 #    print (marketo.update_folder(129, "stuff", "Blog Changed"))
 
 #    print (marketo.get_tokens(129))
+
+    print(marketo.get_lead_activity_types())
