@@ -11,8 +11,10 @@ from urllib import urlencode
 # TODO
 
 # Add return values to the Returns documentation
-# Allow for integer parameters
-# Non-English
+# Allow for integer parameters - decide if you actually want this. I don't so fix it.
+# Non-English content for asset API
+# Figure out how to fix the POST calls
+# Standardize the comment syntax. Periods at the end of param descriptions?
 
 class MarketoWrapper:
     """
@@ -56,7 +58,7 @@ class MarketoWrapper:
         # used for initialization
         self.__expire_time = 0
         self.__token = self.__generateAccessToken(self.__munchkin)
-        954-608-8765
+        
 ############################################################################################
 #                                                                                          #
 #                                   Private Methods                                        # 
@@ -313,9 +315,119 @@ class MarketoWrapper:
         method = "POST"
         return self.__generic_api_call(call, method)
     
-    def update_folder(self, description=None, name=None, isArchive=None):
-        pass
+    def update_folder(self, folder_id, description=None, name=None, is_archive=None):
+        """
+        This method allows updating of the folder name, description and the option
+        of archiving the folder.
         
+        Args:
+            folder_id (int):                The id of the folder to be deleted
+            description (string, optional): The updated folder description
+            name (string, optional):        The updated name of the folder
+            is_archive (boolean, optional): Whether or not the folder should be archived.
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/folder/"+str(folder_id)+".json"
+        method = "POST"
+        payload = {}
+        if description is not None:
+            payload["description"] = description
+        if name is not None:
+            payload["name"] = name
+        if is_archive is not None:
+            payload["isArchive"] = is_archive
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+############################################################################################
+#                                                                                          #
+#                                 Token API Calls                                          # 
+#                                                                                          #             
+############################################################################################
+        
+    def create_token(self, parent_id, type, name, value):
+        """
+        This method creates a token at the folder level or the program level.
+        
+        Args:
+            parent_id (int):    The id of the folder/program to place the token in
+            type (string):      The type of the token. See below for list of types.
+            name (string):      The name of the token
+            value (string):     The value of the token. If it is a date token, it must
+                                be in the format yyyy-mm-dd. If it is a score, it must
+                                be preceeded by a +, - or = to indicate a score increment,
+                                decrement, or reset respectively.
+            
+        Returns:
+            dict:   The response from the server
+            
+        Available Data Types:
+        
+        date                A date value
+        iCalendar           A .ics file
+        number              An integer
+        rich text           HTML text
+        score               A score increment, decrement or reset
+        script block        A Velocity script
+        sfdc campaign       Used in SFDC campaign management integration
+        text                Plain text
+        
+        *Types are case sensitive
+        """
+        call = "rest/asset/v1/folder/"+parent_id+"/tokens.json"
+        method = "POST"
+        payload = {"type": type,
+                   "name": name,
+                   "value": value}
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+        
+    def get_tokens(self, parent_id):
+        """
+        This method lists all of the tokens under a folder/program
+        
+        Args:
+            parent_id (int):    The id of the folder/program where the tokens
+                                are located.
+            
+        Returns:
+            dict:   The response from the server
+        """
+        call = "rest/asset/v1/folder/"+str(parent_id)+"/tokens.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def delete_tokens(self, parent_id, type, name):
+        """
+        This method deletes a token from a folder/program.
+        
+        Args:
+            parent_id (int):    The id of the folder/program where the token is.
+            type (string):      The type of the token. See below for list of types.
+            name (string):      The name of the token
+            
+        Returns:
+            dict:   The response from the server
+            
+        Available Data Types:
+        
+        date                A date value
+        iCalendar           A .ics file
+        number              An integer
+        rich text           HTML text
+        score               A score increment, decrement or reset
+        script block        A Velocity script
+        sfdc campaign       Used in SFDC campaign management integration
+        text                Plain text
+        
+        *Types are case sensitive
+        """
+        call = "rest/asset/v1/folder/"+parent_id+"/token/delete.json"
+        method = "POST"
+        payload = {"type": type,
+                   "name": name}
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
 ############################################################################################
 #                                                                                          #
 #                                  Email API Calls                                         # 
@@ -572,4 +684,7 @@ if __name__ == "__main__":
 #    print(marketo.create_folder("delete me", 129))
 #    print(marketo.delete_folder(178))
 #    print(marketo.get_folder_by_id(129))
-    print(marketo.get_folder_by_name("Blog"))
+#    print(marketo.get_folder_by_name("Blog"))
+#    print (marketo.update_folder(129, "stuff", "Blog Changed"))
+
+#    print (marketo.get_tokens(129))
