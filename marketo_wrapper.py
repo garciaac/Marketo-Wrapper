@@ -5,7 +5,7 @@ import httplib2
 import json
 import logging
 import settings
-from urllib import urlencode
+#from urllib import urlencode
 
 # TODO
 
@@ -198,7 +198,7 @@ class MarketoWrapper:
         headers["leadId"] = loser
         return self.__generic_api_call(call, method, None, headers)
     
-    def get_lead_by_id(self, lead):
+    def get_lead_by_id(self, lead, fields=None):
         """
         This method makes the get_lead_by_id call.
         
@@ -207,8 +207,10 @@ class MarketoWrapper:
             
         Returns:
             dict:   The response from the server
-        """
+        """            
         call = "/rest/v1/lead/"+lead+".json"
+        if fields is not None:
+            call += "?fields="+fields
         method = "GET"
         return self.__generic_api_call(call, method)
     
@@ -224,7 +226,7 @@ class MarketoWrapper:
         """
         call = "/rest/v1/activities/types.json"
         method = "GET"
-        return self.__generica_api_call(call, method)
+        return self.__generic_api_call(call, method)
 
 ############################################################################################
 #                                                                                          #
@@ -705,4 +707,5 @@ if __name__ == "__main__":
 
 #    print (marketo.get_tokens(129))
 
-    print(marketo.get_lead_activity_types())
+    for ii in range(200):
+        print(marketo.get_lead_by_id("5", "firstName"))
