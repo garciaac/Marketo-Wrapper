@@ -227,7 +227,26 @@ class MarketoWrapper:
         call = "/rest/v1/activities/types.json"
         method = "GET"
         return self.__generic_api_call(call, method)
-
+    
+############################################################################################
+#                                                                                          #
+#                                Campaign API Calls                                        # 
+#                                                                                          #             
+############################################################################################
+    
+    def schedule_campaign(self, id, tokens=None, run_at=None, clone_to=None):
+        call = "rest/v1/campaigns/"+id+"/schedule.json"
+        method = "POST"
+        payload = {}
+        if tokens is not None:
+            payload["tokens"] = tokens
+        if run_at is not None:
+            payload["runAt"] = run_at
+        if clone_to is not None:
+            payload["cloneToProgramName"] = clone_to
+        
+        return self.__generic_api_call(call, method, json.dumps({"input": payload}))
+    
 ############################################################################################
 #                                                                                          #
 #                                Folder API Calls                                          # 
