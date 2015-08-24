@@ -51,7 +51,7 @@ class MarketoWrapper:
         self.__munchkin = munchkin_id
         # The httplib2.Http constructor takes an optional directory argument
         # where caching will be done. The directory does not need to exist beforehand.
-        self.__http = httplib2.Http(".http_cache")
+        self.__http = httplib2.Http()
         # This will store credentials in __http so they do not need to be passed
         # each time a token is requested.
         self.__http.add_credentials(client_id, client_secret)
@@ -134,7 +134,7 @@ class MarketoWrapper:
         
         # If the call was successful, return the content retrieved from the server.
         if (response.status == 200):
-            return content
+            return json.loads(content.decode("utf-8"))
         else:
             raise Exception(str(response.status)+"\n"+response.reason)
     
@@ -156,24 +156,24 @@ class MarketoWrapper:
 #                                                                                          #             
 ############################################################################################
 
-	def get_paging_token(self, since_date_time):
-		"""
+    def get_paging_token(self, since_date_time):
+        """
         This method is used to retrive a paging token from the Marketo database. Paging 
-		tokens are for bulk API calls where the server needs to send multiple responses.
-		This method should be used when initiating a bulk call, and the server will then
-		return subsequent paging tokens in order to keep place inside the database.
-        
+        tokens are for bulk API calls where the server needs to send multiple responses.
+        This method should be used when initiating a bulk call, and the server will then
+        return subsequent paging tokens in order to keep place inside the database.
+
         Args:
             since_date_time (string):    This is used to initiate the database search.
-										 It does not need to be any specific time, but
-										 it should be different than others used.
-		Returns:
-			string: The paging token given by the Marketo server
+                                         It does not need to be any specific time, but
+                                         it should be different than others used.
+        Returns:
+            string: The paging token given by the Marketo server
         """
-		call = "rest/v1/activities/pagingtoken.json?sinceDatetime="+since_date_time
-		method = "GET"
-		response = self.__generic_api_call(call, method)
-		return response["nextPageToken"]
+        call = "rest/v1/activities/pagingtoken.json?sinceDatetime="+since_date_time
+        method = "GET"
+        response = self.__generic_api_call(call, method)
+        return response["nextPageToken"]
 	
 ############################################################################################
 #                                                                                          #
@@ -256,52 +256,66 @@ class MarketoWrapper:
         method = "GET"
         return self.__generic_api_call(call, method)
 	
-	def get_lead_activities(self, activity_type_ids, paging_token, list_id=None, batch_size=None):
-		"""
+    def get_lead_activities(self, activity_type_ids, paging_token, list_id=None, batch_size=None):
+        """
         This method returns a list of lead activities that are filtered by the activity_type_ids
-		parameter. That is, it returns all activities whose types match one of the types given
-		in the parameter. The paging token is used because the list returned by the server may be 
-		too large for a single response, and must be fragmented across responses. See this resource
-		for more on paging tokens: http://developers.marketo.com/documentation/rest/get-paging-token
-        
+        parameter. That is, it returns all activities whose types match one of the types given
+        in the parameter. The paging token is used because the list returned by the server may be 
+        too large for a single response, and must be fragmented across responses. See this resource
+        for more on paging tokens: http://developers.marketo.com/documentation/rest/get-paging-token
+
         Args:
             activitity_type_ids (list): A list of integers indicating the activity ids to filter on
-			paging_token (string):		The paging token that will be used to iterate through the database
-			list_id (int, optional):	The id of a list of leads to retrieve activities for
-			batch_size (int, optional):	How many results the server will return at a time. Default and max
-										is 300.
-            
+            paging_token (string):		The paging token that will be used to iterate through the database
+            list_id (int, optional):	The id of a list of leads to retrieve activities for
+            batch_size (int, optional):	How many results the server will return at a time. Default and max
+                                        is 300.
+
         Returns:
             dict:   The response from the server. The "result" attribute contains an array 
-					of dictionaries that represent the lead activities. They include the 
-					lead id, activity type id, primary attribute value etc.
+                    of dictionaries that represent the lead activities. They include the 
+                    lead id, activity type id, primary attribute value etc.
         """
-		call = 	"/rest/v1/activities.json?"+"nextPageToken="+paging_token
-		if list_id is not None:
-			call += "&listId="+list_id
-		if batch_size is not None:
-			call += "&batchSize="+batch_size
-		for ii in range(len(activity_type_ids)):
-			call += "&activityTypeIds="+activity_type_ids[ii]
-		method = "GET"
-		return self.__generic_api_call(call, method)
+        call = 	"/rest/v1/activities.json?"+"nextPageToken="+paging_token
+        if list_id is not None:
+            call += "&listId="+str(list_id)
+        if batch_size is not None:
+            call += "&batchSize="+str(batch_size)
+        for ii in range(len(activity_type_ids)):
+            call += "&activityTypeIds="+str(activity_type_ids[ii])
+        method = "GET"
+        return self.__generic_api_call(call, method)
     
-	#TODO - check for >300 activities
-	def add_lead_activities(self, activities):
-		"""
+    #TODO - check for >300 activities
+    def add_lead_activities(self, activities):
+        """
         This method appends the given activities to the Marketo lead database.
-        
+
         Args:
-            activities (list):   A list of dicts containing all of the activites to upload
-            
+            activities (list):  A list of dicts containing all of the activites to upload.
+                                The format should be of the following:
+                                {         
+                                    "leadId":1001,
+                                    "activityDate":"2013-09-26T06:56:35+07:00",
+                                    "activityTypeId":1001,
+                                    "primaryAttributeValue":"Game Giveaway",
+                                    "attributes":[  
+                                        {  
+                                           "name":"URL",
+                                           "value":"http://www.nvidia.com/game-giveaway"
+                                        }
+                                    ]
+                                }
+                                Please see the developer documentation for more.
+
         Returns:
             dict:   The response from the server. The "result" attribute contains an array
-					of dictionaries that contain the completion status for each activity.
+                    of dictionaries that contain the completion status for each activity.
         """
         call = "rest/v1/activities/external.json"
         method = "POST"
-        payload = {"input": leads}
-        # Use json.dumps() because the httplib2 does not serialize dictionary
+        payload = {"input": activities}
+        # Use json.dumps() because httplib2 does not serialize dictionary
         # objects by default.
         return self.__generic_api_call(call, method, json.dumps(payload))
 	
@@ -312,37 +326,37 @@ class MarketoWrapper:
 ############################################################################################
     
     def schedule_campaign(self, camp_id, tokens=None, run_at=None, clone_to=None):
-		"""
+        """
         This method schedules a campaign to run inside of Marketo. The difference between
-		schedule campaign and request campaign is that schedule campaign uses a smart list
-		inside of Marketo whereas request campaign tells Marketo which leads to run through
-		the campaign. 
-        
+        schedule campaign and request campaign is that schedule campaign uses a smart list
+        inside of Marketo whereas request campaign tells Marketo which leads to run through
+        the campaign. 
+
         Args:
-			camp_id (int):					The id of the campaign to be scheduled. This can be retrieved by
-											making the get multiple campaigns call.
-			tokens (list, optional):		A list of dictionaries that have the key/value pairs for the
-											program tokens corresponding to that campaign. These tokens will
-											not overwrite the ones configured in Marketo.
-			run_at (string, optional):		A datetime string for when the campaign should run. If omitted,
-											it defaults to five minutes in the future.
-			clone_to (string, optional):	If this parameter is used, the parent program of the campaign will be
-											cloned, and the newly created campaign will be the one to run.
-											
+            camp_id (int):					The id of the campaign to be scheduled. This can be retrieved by
+                                            making the get multiple campaigns call.
+            tokens (list, optional):		A list of dictionaries that have the key/value pairs for the
+                                            program tokens corresponding to that campaign. These tokens will
+                                            not overwrite the ones configured in Marketo.
+            run_at (string, optional):		A datetime string for when the campaign should run. If omitted,
+                                            it defaults to five minutes in the future.
+            clone_to (string, optional):	If this parameter is used, the parent program of the campaign will be
+                                            cloned, and the newly created campaign will be the one to run.
+
         Returns:
             dict:   The response from the server that indicates success or failure.
         """
-		call = "rest/v1/campaigns/"+camp_id+"/schedule.json"
-		method = "POST"
-		payload = {}
-		if tokens is not None:
-			payload["tokens"] = tokens
-		if run_at is not None:
-			payload["runAt"] = run_at
-		if clone_to is not None:
-			payload["cloneToProgramName"] = clone_to
-        
-		return self.__generic_api_call(call, method, json.dumps({"input": payload}))
+        call = "rest/v1/campaigns/"+camp_id+"/schedule.json"
+        method = "POST"
+        payload = {}
+        if tokens is not None:
+            payload["tokens"] = tokens
+        if run_at is not None:
+            payload["runAt"] = run_at
+        if clone_to is not None:
+            payload["cloneToProgramName"] = clone_to
+
+        return self.__generic_api_call(call, method, json.dumps({"input": payload}))
     
 ############################################################################################
 #                                                                                          #
@@ -370,7 +384,7 @@ class MarketoWrapper:
         method = "GET"
         
         if offset is not None:
-            call += "&offSet="+str(offset)
+        	call += "&offSet="+str(offset)
         if max_depth is not None:
             call += "&maxDepth="+str(max_depth)
         if max_return is not None:
@@ -436,10 +450,10 @@ class MarketoWrapper:
         """
         call = "rest/asset/v1/folders.json?name="+name+"&parent="+str(parent)
         method = "POST"
-        
+
         if description is not None:
             call += "&description="+description
-            
+
         return self.__generic_api_call(call, method)
         
     def delete_folder(self, folder_id, folder_type):
@@ -455,7 +469,7 @@ class MarketoWrapper:
         """
         call = "rest/asset/v1/folder/"+str(folder_id)+"/delete.json"
         method = "POST"
-		payload = "type="+folder_type
+        payload = "type="+folder_type
         return self.__generic_api_call(call, method, payload=payload)
     
     def update_folder(self, folder_id, folder_type, description=None, name=None, is_archive=None):
@@ -632,7 +646,9 @@ class MarketoWrapper:
     
     def get_email_content_by_id(self, email, status=None):
         """
-        This method gets an email asset's HTML content given its id.
+        This method gets an email asset's content given its id. This does not include
+        HTML. Email content in Marketo means the rich text that is contained in the
+        editable sections. HTML must be acquired using the email template API.
         
         Args:
             email (int): 				The id of the desired email asset.
@@ -640,25 +656,10 @@ class MarketoWrapper:
 										or "Draft"
             
         Returns:
-            dict:   The response from the server
+            dict:   The response from the server that has the values of the editable
+                    sections of the email. 
         """
         call = "rest/asset/v1/email/"+str(email)+"/content.json"
-        method = "GET"
-        return self.__generic_api_call(call, method)
-    
-    def get_email_content_by_section_id(self, email, section):
-        """
-        This method gets a specific section of an email asset's content 
-        given both the email and section ids.
-        
-        Args:
-            email (string):     The id of the desired email asset
-            section (string):   The id of the desired section
-            
-        Returns:
-            dict:   The response from the server
-        """
-        call = "rest/asset/v1/email/"+email+"/content/"+section+".json"
         method = "GET"
         return self.__generic_api_call(call, method)
     
@@ -668,57 +669,70 @@ class MarketoWrapper:
 #                                                                                          #             
 ############################################################################################
 
-    def get_email_templates(self):
+    def get_email_templates(self, offset=None, max_return=None, status=None):
         """
-        This method returns a list of all email templates.
+        This method returns a list of all email templates and their metadata.
         
         Args:
-            None
+            offset (int, optional):		Specifies the start point. Can be used in conjunction
+										with max_return to iterate through a large block of results.
+			max_return (int, optional):	The maximum number of records to return. Default is 20 max 200.
+			status (string, optional):	The status of the email asset. Either "Approved" or "Draft".
             
         Returns:
-            dict:   The response from the server
+            dict:   The response from the server. The "results" attribute is an array of dictionaries
+                    that represent the email templates. It includes the id, the name, workspace, last
+                    modified date etc.
         """
         call = "rest/asset/v1/emailTemplates.json"
         method = "GET"
         return self.__generic_api_call(call, method)
 
-    def get_email_template_by_name(self, template_name):
+    def get_email_template_by_id(self, template_id, status=None):
         """
-        This method returns the meta data of the given email template
+        This method returns the meta data of the given email template.
         
         Args:
-            template_name (string):   The name of the desired email template
+            template_name (string):     The name of the desired email template.
+            status (string, optional):  The status of the email asset. Either "Approved" or "Draft".
             
         Returns:
-            dict:   The response from the server
-        """
-        call = "rest/asset/v1/emailTemplate/byName.json?name="+template_name
-        method = "GET"
-        return self.__generic_api_call(call, method)
-    
-    def get_email_template_by_id(self, template_id):
-        """
-        This method returns the meta data of the given email template
-        
-        Args:
-            template_id (string):   The id of the desired email template
-            
-        Returns:
-            dict:   The response from the server
+            dict:   The response from the server. It includes the same data as get_email_templates
+                    just for the specific one given.
         """
         call = "rest/asset/v1/emailTemplate/"+template_id+".json"
         method = "GET"
         return self.__generic_api_call(call, method)
     
-    def get_email_template_content_by_id(self, template_id):
+    def get_email_template_by_name(self, template_name, status=None):
+        """
+        This method returns the meta data of the given email template.
+        
+        Args:
+            template_name (string):     The name of the desired email template.
+            status (string, optional):  The status of the email asset. Either "Approved" or "Draft".
+            
+        Returns:
+            dict:   The response from the server. It includes the same data as get_email_templates
+                    just for the specific one given.
+        """
+        call = "rest/asset/v1/emailTemplate/byName.json?name="+template_name
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_email_template_content_by_id(self, template_id, status=None):
         """
         This method returns the HTML of the given email template
         
+        This method returns the meta data of the given email template.
+        
         Args:
-            template_id (string):   The id of the desired email template
+            template_id (int):          The name of the desired email template.
+            status (string, optional):  The status of the email asset. Either "Approved" or "Draft".
             
         Returns:
-            dict:   The response from the server
+            dict:   The response from the server. It includes the actual HTML of
+                    the email template.
         """
         call = "rest/asset/v1/emailTemplate/"+template_id+"/content.json"
         method = "GET"
@@ -726,7 +740,7 @@ class MarketoWrapper:
     
     def update_email_template(self, template_id, name=None, description=None):
         """
-        This method updates the name and/or description of the given email template
+        This method updates the name and/or description of the given email template.
         
         Args:
             template_id (string):             The id of the desired email template
@@ -734,7 +748,8 @@ class MarketoWrapper:
             description (string, optional):   The new description of the email template
             
         Returns:
-            dict:   The response from the server
+            dict:   The response from the server that contains the updated
+                    asset metadata.
         """
         call = "rest/asset/v1/emailTemplate/"+template_id+".json"
         method = "POST"
@@ -751,10 +766,10 @@ class MarketoWrapper:
         drafts that are created underneath the given template.
         
         Args:
-            template_id (string):   The id of the desired email template
+            template_id (int):   The id of the desired email template.
             
         Returns:
-            dict:   The response from the server
+            dict:   The response from the server that includes the updated status.
         """
         call = "rest/asset/v1/emailTemplate/"+template_id+"/approveDraft.json"
         method = "POST"
@@ -762,13 +777,13 @@ class MarketoWrapper:
     
     def unapprove_email_template(self, template_id):
         """
-        This method unapproves the given email template
+        This method unapproves the given email template.
         
         Args:
-            template_id (string):   The id of the desired email template
+            template_id (id):   The id of the desired email template
             
         Returns:
-            dict:   The response from the server
+            dict:   The response from the server that includes the updated status.
         """
         call = "rest/asset/v1/emailTemplate/"+template_id+"/unapprove.json"
         method = "POST"
@@ -776,13 +791,13 @@ class MarketoWrapper:
     
     def delete_email_template(self, template_id):
         """
-        This method deletes the given email template
+        This method deletes the given email template.
         
         Args:
-            template_id (string):   The id of the desired email template
+            template_id (int):   The id of the desired email template
             
         Returns:
-            dict:   The response from the server
+            dict:   The response from the server that indicates success or failure.
         """
         call = "rest/asset/v1/emailTemplate/"+template_id+"/delete.json"
         method = "POST"
@@ -790,13 +805,13 @@ class MarketoWrapper:
     
     def discard_email_template_draft(self, template_id):
         """
-        This method discards the draft of the given email template
+        This method discards the draft of the given email template.
         
         Args:
-            template_id (string):   The id of the desired email template
+            template_id (int):   The id of the desired email template
             
         Returns:
-            dict:   The response from the server
+            dict:   The response from the server indicating success or failure.
         """
         call = "rest/asset/v1/emailTemplate/"+template_id+"/discardDraft.json"
         method = "POST"
@@ -808,15 +823,23 @@ class MarketoWrapper:
     
     def clone_email_template(self, template_id, name, folder):
         """
-        This method clones the given email template
+        This method clones the given email template.
         
         Args:
-            template_id (string):   The id of the desired email template
-            name (string):          The name of the new email template
-            folder (string):        The destination folder for the new email template
+            template_id (string):   The id of the desired email template.
+            name (string):          The name of the new email template.
+            folder (string):        A specific folder in which to search for emails. The dictionary
+                                    should be of the following format:
+                                        {
+                                         "id" : 1234,
+                                         "type" : "Folder"
+                                        }
+                                    where "id" is the folder id (integer), and "type" is either 
+                                    "Program" or "Folder" (string).
             
         Returns:
-            dict:   The response from the server
+            dict:   The response from the server which includes all of the metadata
+                    of the newly created asset.
         """
         call = "rest/asset/v1/emailTemplate/"+template_id+"/clone.json"
         method = "POST"
@@ -840,7 +863,7 @@ if __name__ == "__main__":
         
 #    print(marketo.get_lead_by_id("5"))
 
-	print(marketo.get_email_by_id(1120))
+    print(marketo.get_email_content_by_id(1108))
 
 #    print(marketo.get_email_templates())
 #    print(marketo.get_email_template_by_name("delete me"))
@@ -859,6 +882,3 @@ if __name__ == "__main__":
 #    print (marketo.update_folder(129, "stuff", "Blog Changed"))
 
 #    print (marketo.get_tokens(129))
-
-    for ii in range(200):
-        print(marketo.get_lead_by_id("5", "firstName"))
