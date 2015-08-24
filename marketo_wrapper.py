@@ -16,6 +16,32 @@ import settings
 # Do more elegant error handling
 # Be more consistent with folder_id vs. folder
 # Double check all the call URLs
+# Test if you can include a cookie value in create/update and Marketo will automatically merge the activities
+
+############################################################################################
+#                                                                                          #
+#                                    Utilities                                             # 
+#                                                                                          #             
+############################################################################################
+
+def listify_parameter(name, values):
+    """
+    This method is used to reduce the amount of for loops in the function definitions.
+    There is a large number of API calls that accept multiple values, and the way to 
+    format the REST URL is to append the same parameter multiple times
+    e.g. ...example.json?id=value1&id=value2&id=value3 etc. This method outputs the
+    repeated parameter name with each value given.
+    """
+    query_string = ""
+    for ii in range(len(values)):
+        query_string += "&"+str(name)+"="str(values[ii])
+    return query_string
+
+############################################################################################
+#                                                                                          #
+#                                Class Definition                                          # 
+#                                                                                          #             
+############################################################################################
 
 class MarketoWrapper:
     """
@@ -181,46 +207,6 @@ class MarketoWrapper:
 #                                                                                          #             
 ############################################################################################
     
-	# TODO add the optional parameters
-    def create_update_leads(self, leads):
-        """
-        This method makes takes an array of dictionaries that represent all of the leads
-		and their attributes that should be updated in Marketo. It takes that array, and
-		does an upsert operation to the Marketo database.
-        
-        Args:
-            leads (list):   A list of dicts containing all of the leads to upload
-            
-        Returns:
-            dict:   A dictionary that has the completion status for each lead in the input
-        """
-        call = "rest/v1/leads.json"
-        method = "POST"
-        payload = {"input": leads}
-        # Use json.dumps() because the httplib2 does not serialize dictionary
-        # objects by default.
-        return self.__generic_api_call(call, method, json.dumps(payload))
-        
-    # TODO - add merge in CRM option and support multiple losers
-    def merge_lead(self, winner, loser):
-        """
-        This method merges two or more leads. The winner's attributes will be preferred over the loser(s).
-		Optionally, the leads can be merged in CRM as well.
-        
-        Args:
-            winner (string):    The lead id of the authoritative lead
-            losers (list):      A list of strings containing all of the lead ids to 
-                                merge, but will yield to winner for conflicting values
-            
-        Returns:
-            dict:   The response from the server
-        """
-        call = "rest/v1/leads/"+leadID+"/merge.json"
-        method = "POST"
-        headers = {}
-        headers["leadId"] = loser
-        return self.__generic_api_call(call, method, None, headers)
-    
     def get_lead_by_id(self, lead, fields=None):
         """
         This method retrieves a lead's attributes by its id. The fields parameter can specify 
@@ -234,9 +220,217 @@ class MarketoWrapper:
         Returns:
             dict:   A dictionary that contains all of the lead attributes
         """            
-        call = "/rest/v1/lead/"+lead+".json"
+        call = "rest/v1/lead/"+str(lead)+".json"
         if fields is not None:
-            call += "?fields="+fields
+            # The join method drops the brackets from the list and returns
+            # all the list elements in a single, comma separated string. The 
+            # map method just maps all of the elements in the list to the string
+            # data type. This is redundant as everything should already be in a string.
+            call += "?fields="+",".join(map(str, fields))
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_multiple_leads_by_filter_type(self, filter_type, filter_values, fields=None, 
+                                          batch_size=None, paging_token=None):
+        """
+        This method uses a given filter to retrieve all leads that fit a certain criteria. It
+        does not support any fuzzy logic. The filter works by matching lead fields against the
+        exact values specified in the filter_values parameter. 
+        
+        Args:
+            filter_type (string):               This should be the API name of the lead field to filter on.
+            filter_values (list):               This is a list of possible values for the lead field. If a lead's
+                                                field matches any of the given values, it will be included in the response.
+            fields (list, optional):            A list of desired lead fields to be included in the response.
+            batch_size (int, optional):         The number of leads to include in the response. Default and max is 300.
+            paging_token (string, optional):    A token that will be used to start pagination through large result sets.
+                                                It is recommended to always include this parameter, so that it will be
+                                                guaranteed that all results are received.
+        
+        Returns:
+            dict:   A dictionary that contains the server response. The results attribute will contain an
+                    array of dictionaries representing each lead that matched the filter.
+        """
+        call = "rest/v1/leads.json?filterType="+str(filter_type)+"&filterValues="+",".join(map(str, filter_values))
+        if fields is not None:
+            call += "&fields="+",".join(map(str, fields))
+        if batch_size is not None:
+            call += "&batchSize="+str(batch_size)
+        if paging_token is not None:
+            call += "&nextPageToken="+str(paging_token)
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_multiple_leads_by_list_id(self, list_id, fields=None, batch_size=None, paging_token=None):
+        """
+        This method uses a given filter to retrieve all leads that are members of a static list. This
+        method does not support smart lists.
+        
+        Args:
+            list_id (int):                      The id of the desired static list.
+            fields (list, optional):            A list of desired lead fields to be included in the response.
+            batch_size (int, optional):         The number of leads to include in the response. Default and max is 300.
+            paging_token (string, optional):    A token that will be used to start pagination through large result sets.
+                                                It is recommended to always include this parameter, so that it will be
+                                                guaranteed that all results are received.
+        
+        Returns:
+            dict:   A dictionary that contains the server response. The results attribute will contain an
+                    array of dictionaries representing each lead that is part of the list.
+        """
+        call = "rest/v1/list/"+str(list_id)+"/leads.json?"
+        
+        # This code will generate a URL of the form ".../leads/json?&...".
+        # The ampersand immediately following the question mark does not
+        # generate any errors.
+        if fields is not None:
+            call += "&fields="+",".join(map(str, fields))
+        if batch_size is not None:
+            call += "&batchSize="+str(batch_size)
+        if paging_token is not None:
+            call += "&nextPageToken="+str(paging_token)
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_multiple_leads_by_program_id(self, program_id, fields=None, batch_size=None, paging_token=None):
+        """
+        This method uses a given filter to retrieve all leads that are members of a program.
+        
+        Args:
+            program_id (int):                   The id of the desired static list.
+            fields (list, optional):            A list of desired lead fields to be included in the response.
+            batch_size (int, optional):         The number of leads to include in the response. Default and max is 300.
+            paging_token (string, optional):    A token that will be used to start pagination through large result sets.
+                                                It is recommended to always include this parameter, so that it will be
+                                                guaranteed that all results are received.
+        
+        Returns:
+            dict:   A dictionary that contains the server response. The results attribute will contain an
+                    array of dictionaries representing each lead that is part of the program.
+        """
+        call = "rest/v1/leads/programs/"+str(program_id)+".json?"
+        
+        # This code will generate a URL of the form "...json?&...".
+        # The ampersand immediately following the question mark does not
+        # generate any errors.
+        if fields is not None:
+            call += "&fields="+",".join(map(str, fields))
+        if batch_size is not None:
+            call += "&batchSize="+str(batch_size)
+        if paging_token is not None:
+            call += "&nextPageToken="+str(paging_token)
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def create_update_leads(self, leads, action=None, lookup_field=None, async=None, partition=None):
+        """
+        This method makes takes an array of dictionaries that represent all of the leads
+		and their attributes that should be updated in Marketo. It takes that array, and
+		does an upsert operation to the Marketo database.
+        
+        Args:
+            leads (list):                       A list of dicts containing all of the leads to upload
+            action (string, optional):          This tells the server how to process the leads. 
+                                                The possible values are: 
+                                                'createOnly'
+                                                'updateOnly'
+                                                'createOrUpdate' --> default if parameter isn't given
+                                                'createDuplicate'
+            lookup_field (string, optional):    This specifies which field to use to identify 
+                                                duplicates. Deault is email.
+            async (bool, optional):             Tells the server to process the updates asynchronously. The
+                                                default is false.
+            partition (string, optional):       Specifies which partition to do the operation on. This becomes
+                                                a required parameter if the Marketo instance has lead partitions.
+            
+        Returns:
+            dict:   A dictionary that has the completion status for each lead in the input.
+        """
+        call = "rest/v1/leads.json"
+        method = "POST"
+        payload = {"input": leads}
+        if action is not None:
+            payload["action"] = str(action)
+        if lookup_field is not None:
+            payload["lookupField"] = lookup_field
+        if async is not None:
+            payload["asyncProcessing"] = str(async)
+        if partition is not None:
+            payload["partitionName"] = partition
+        # Use json.dumps() because the httplib2 does not serialize dictionary
+        # objects by default.
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def associate_lead(self, lead_id, cookie):
+        """
+        This method is used to merge an anonymous lead's activity into a known lead's
+        activity record. An example of when this is necessary is if a customer has multiple
+        domains, but a user has only converted on domain A. If the customer has a mechanism
+        for identifying that same user on domain B without a Marketo form fill, this method
+        will make the lead known to domain B inside of Marketo.
+        
+        Args:
+            lead_id (int):      The id of the lead to merge. 
+            cookie (string):    The munchkin tracking id of the user. This can be retrieved
+                                through Javascript on the web page. See this link for the 
+                                specific format that is needs to be in:
+                                http://developers.marketo.com/documentation/rest/associate-lead/
+                                
+        Returns:
+            dict: The response from the server indicating success or failure.
+        """
+        call = "rest/v1/leads/"str(lead_id)"/associate.json?cookie="+str(cokie)
+        method = "POST"
+        return self.__generic_api_call(call, method)
+    
+    def merge_lead(self, winner, losers, crm_merge=None):
+        """
+        This method merges two or more leads. The winner's attributes will be preferred over the loser(s).
+		Optionally, the leads can be merged in CRM as well. The convention of the API call is such that 
+        the winning lead's id is given in the URL, and the losing lead is passed as the leadIds paramenter
+        in the API call. This implementation only uses the leadIds parameter as opposed to the leadId
+        parameter. The difference is that the leadId takes a single id and leadIds takes a list. 
+        For consistency, this method always takes a list even if there is only one id in it.
+        
+        Args:
+            winner (int):               The lead id of the authoritative lead.
+            losers (list):              A list of the lead ids to merge, but will yield to winner 
+                                        for conflicting values.
+            crm_merge (bool, optional): Specifies whether or not to merge in CRM. This can be
+                                        difficult to do. Please refer to the below for the
+                                        semantics of this parameter:
+                                        
+        Use only one winning lead id and one losing lead id when enabling this parameter.
+
+        If both leads are in SFDC and one is a CRM lead and the other is a CRM contact, then the 
+        winner is the CRM contact (regardless which lead is specified as winner).  
+        Note that the leads are merged within SFDC.
+
+        If one of the leads is in SFDC and the other is Marketo only, then the winner is the 
+        SFDC lead (regardless of which lead is specified as winner).
+                                            
+        Returns:
+            dict:   The response from the server indicating success or failure.
+        """
+        call = "rest/v1/leads/"+leadID+"/merge.json"
+        method = "POST"
+        headers = {"leadIds": ",".join(map(str, losers))}
+        if crm_merge is not None:
+            headers["mergeInCRM"] = str(crm_merge)
+        return self.__generic_api_call(call, method, headers=headers)
+    
+    def get_lead_partitions(self):
+        """
+        This method returns a list of all the lead partitions in Marketo.
+        
+        Args:
+            None
+        
+        Returns:
+            dict:   The response from the server. The result attribute contains a list of dictionaries
+                    that has the id and name of each partition.
+        """
+        call = "rest/v1/leads/partitions.json"
         method = "GET"
         return self.__generic_api_call(call, method)
     
@@ -252,7 +446,7 @@ class MarketoWrapper:
 					of dictionaries that represent each activity types. It includes the 
 					activity id, name, attributes, description etc.
         """
-        call = "/rest/v1/activities/types.json"
+        call = "rest/v1/activities/types.json"
         method = "GET"
         return self.__generic_api_call(call, method)
 	
@@ -276,13 +470,12 @@ class MarketoWrapper:
                     of dictionaries that represent the lead activities. They include the 
                     lead id, activity type id, primary attribute value etc.
         """
-        call = 	"/rest/v1/activities.json?"+"nextPageToken="+paging_token
+        call = 	"rest/v1/activities.json?"+"nextPageToken="+paging_token
         if list_id is not None:
             call += "&listId="+str(list_id)
         if batch_size is not None:
             call += "&batchSize="+str(batch_size)
-        for ii in range(len(activity_type_ids)):
-            call += "&activityTypeIds="+str(activity_type_ids[ii])
+        call += lisitfy_parameter("activityTypeIds", activity_type_ids)
         method = "GET"
         return self.__generic_api_call(call, method)
     
@@ -317,13 +510,263 @@ class MarketoWrapper:
         payload = {"input": activities}
         # Use json.dumps() because httplib2 does not serialize dictionary
         # objects by default.
-        return self.__generic_api_call(call, method, json.dumps(payload))
-	
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def import_lead(self, file_format, file_name, lookup_field=None, list_id=None, partition=None):
+        """
+        This method syncs leads in bulk using CSV files (or TSV/SSV). It is asynchronous, and
+        the limit on the file size is 10MB. Since it is an asynchronous call, you can schedule
+        multiple sync jobs using it, but there is a limit of 10 total file imports that can
+        be in the queue at once. 
+        
+        Args:
+            file_format (string):               The format of the file, which can be 'csv', 'tsv', or 'ssv'.
+            file_name (string):                 The path to the desired file.
+            lookup_field (string, optional):    The field to use to identify duplicates. By default, it is email.
+            list_id (int, optional):            The static list to import that leads to. If omitted, the system
+                                                will create a temporary list
+            partition (string, optional):       If partitions are setup, this should be used to specify which
+                                                partition to use. If it isn't specified, it will use the
+                                                primary partition, and the temp list will go into the first
+                                                workspace in that partition.
+        
+        Returns:
+            dict:   The response from the server. The result attribute contains a batch id which can
+                    be used to query the system for the status of the import since the import
+                    is asynchronous.
+        """
+        pass
+    
+    def get_import_status(self, batch_id):
+        """
+        This method queries for the status the import with the given batch id.
+        
+        Args:
+            batch_id (int):     The id of the desired batch. This is given in the return
+                                JSON of the import_lead call.
+        
+        Returns:
+            dict: The response from the server. It includes the status, number of leads processed,
+            numnber of failures, number of warnings, and a message.
+        """
+        call = "bulk/v1/leads/batch/"+str(batch_id)+".json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_import_failure_file(self, batch_id):
+        """
+        If an import fails, the original file being processed can be retrieved with this method.
+        
+        Args:
+            batch_id (int):     The id of the desired batch. This is given in the return
+                                JSON of the import_lead call.
+        
+        Returns:
+            dict:   The response from the server. It returns the original file in the same
+                    format that was used in the import_lead call.
+        """
+        call = "bulk/v1/leads/batch/"+str(batch_id)+"failures.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    
+
+############################################################################################
+#                                                                                          #
+#                                   List API Calls                                         # 
+#                                                                                          #             
+############################################################################################
+    
+    def get_list_by_id(self, list_id):
+        """
+        This method retrieves metadata about a list not the leads that are inside of it. To 
+        obtain the leads, use the get multiple leads call. The list id can be retrieved by 
+        using the get multiple lists call using the list name.
+        
+        Args:
+            list_id (int):  The id of the desired list.
+            
+        Returns:
+            dict:   The response from the server that contains the information about the list
+                    such as created date, updated date, description etc.
+        """
+        call = "rest/v1/lists/"+str(list_id)+".json
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_multiple_lists(self, list_ids=None, names=None, programs=None, workspaces=None, 
+                           batch_size=None, paging_token=None):
+        """
+        This method returns metadata about all of the lists that match the given criteria. It
+        does not return the leads who are members of the lists. If no parameters are given,
+        it will retrieve all of the lists inside Marketo.
+        
+        Args:
+            NOTE: all of the filter parameters support one or more values.
+            list_ids (list, optional):          A list of ids to match.
+            names (list, optional):             A list of names to match.
+            programs (list, optional):          A list of program names to match.
+            workspaces (list, optional):        A list of workspace names to search in.
+            batch_size (int, optional):         The number of records to return at once. The default
+                                                and max is 300.
+            paging_token (string, optional):    A token that will be used to start pagination through large result sets.
+                                                It is recommended to always include this parameter, so that it will be
+                                                guaranteed that all results are received.
+        
+        Returns:
+            dict:   The response from the server. The result attribute will contain a list of 
+                    dictionaries that have the metadata about the lists.
+        """
+        call = "rest/v1/lists.json?"
+        if list_ids is not None:
+            call += listify_parameter("id", list_ids)
+        if names is not None:
+            call += listify_parameter("name", names)
+        if programs is not None:
+            call += listify_parameter("programName", programs)
+        if workspaces is not None:
+            call += listify_parameter("workspaceName", workspaces)
+        if batch_size is not None:
+            call += "&batchSize="+str(batch_size)
+        if paging_token is not None:
+            call += "&nextPageToken="+str(paging_token)
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+     def add_leads_to_list(self, list_id, leads):
+        """
+        This method will add the given leads to the specified list. 
+        
+        Args:
+            list_id (int):  The id of the list to append to.
+            leads (list):   A list of dictionaries containing all of the leads to add. 
+                            The only lead attribute required is the lead id. E.G.
+                            [
+                                  {
+                                     "id": "1"
+                                  },
+                                  {
+                                     "id": "2"
+                                  }
+                            ]
+        Returns:
+            dict:   The response from the server. The result attribute contains the status information
+                    for each lead.
+        """
+        call = "rest/v1/lists/"+str(list_id)+"/leads.json"
+        method = "POST"
+        payload = {"input": leads}
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def remove_leads_from_list(self, list_id, leads):
+        """
+        This method will remove the given leads from the specified list. 
+        
+        Args:
+            list_id (int):  The id of the list to delete from.
+            leads (list):   A list of dictionaries containing all of the leads to delete. 
+                            The only lead attribute required is the lead id. E.G.
+                            [
+                                  {
+                                     "id": "1"
+                                  },
+                                  {
+                                     "id": "2"
+                                  }
+                            ]
+        Returns:
+            dict:   The response from the server. The result attribute contains the status information
+                    for each lead.
+        """
+        call = "rest/v1/lists/"+str(list_id)+"/leads.json"
+        method = "DELETE"
+        payload = {"input": leads}
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def is_member_of_list(self, list_id, leads):
+        """
+        This method will determine if the leads are members of the given list.
+        
+        Args:
+            list_id (int):  The id of the list to query.
+            leads (list):   A list of dictionaries containing all of the leads. 
+                            The only lead attribute required is the lead id. E.G.
+                            [
+                                  {
+                                     "id": "1"
+                                  },
+                                  {
+                                     "id": "2"
+                                  }
+                            ]
+        Returns:
+            dict:   The response from the server. The result attribute contains the membership information
+                    for each lead. The two statuses possible are 'memberof' and 'notmemberof'
+        """
+        call = "rest/v1/lists/"+str(list_id)+"/leads/ismember.json"
+        method = "POST"
+        payload = {"input": leads}
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
 ############################################################################################
 #                                                                                          #
 #                                Campaign API Calls                                        # 
 #                                                                                          #             
 ############################################################################################
+    
+    def get_campaign_by_id(self, camp_id):
+        """
+        This method obtains metadata about a campaign.
+        
+        Args:
+            camp_id (int):  This id of the desired campaign. This can be obtained via
+                            the get multiple campaigns call.
+                            
+        Returns:
+            dict:   The response from the server. The result attribute contains the metadata
+                    such as created date, modified date etc.
+        """
+        call = "/rest/v1/campaigns/"+str(camp_id)+".json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_multiple_campaigns(self, camp_ids=None, names=None, programs=None, 
+                               workspaces=None, batch_size=None, paging_token=None):
+        """
+        This method returns metadata about all of the campaigns that match the given criteria. 
+        If no parameters are given, it will retrieve all of the campaigns inside Marketo.
+        
+        Args:
+            NOTE: all of the filter parameters support one or more values.
+            list_ids (list, optional):          A list of ids to match.
+            names (list, optional):             A list of names to match.
+            programs (list, optional):          A list of program names to match.
+            workspaces (list, optional):        A list of workspace names to search in.
+            batch_size (int, optional):         The number of records to return at once. The default
+                                                and max is 300.
+            paging_token (string, optional):    A token that will be used to start pagination through large result sets.
+                                                It is recommended to always include this parameter, so that it will be
+                                                guaranteed that all results are received.
+        
+        Returns:
+            dict:   The response from the server. The result attribute will contain a list of 
+                    dictionaries that have the metadata about the lists.
+        """
+        call = "rest/v1/campaigns.json?"
+        if list_ids is not None:
+            call += listify_parameter("id", camp_ids)
+        if names is not None:
+            call += listify_parameter("name", names)
+        if programs is not None:
+            call += listify_parameter("programName", programs)
+        if workspaces is not None:
+            call += listify_parameter("workspaceName", workspaces)
+        if batch_size is not None:
+            call += "&batchSize="+str(batch_size)
+        if paging_token is not None:
+            call += "&nextPageToken="+str(paging_token)
+        method = "GET"
+        return self.__generic_api_call(call, method)
     
     def schedule_campaign(self, camp_id, tokens=None, run_at=None, clone_to=None):
         """
@@ -355,8 +798,38 @@ class MarketoWrapper:
             payload["runAt"] = run_at
         if clone_to is not None:
             payload["cloneToProgramName"] = clone_to
-
+        # This is an inconsistency with the API where all parameters should be inside
+        # the 'input' attribute of the request for this API call.
         return self.__generic_api_call(call, method, json.dumps({"input": payload}))
+    
+    def request_campaign(self, camp_id, leads, tokens=None):
+        """
+        This method fires the 'Campaign is Requested' trigger inside Marketo. This is used to
+        run leads through a campaign in Marketo without having to construct a smart list.
+
+        Args:
+            camp_id (int):					The id of the campaign. This can be retrieved by
+                                            making the get multiple campaigns call.
+            leads (list):                   A list of dictionaries containing all of the leads. 
+                                            The only lead attribute required is the lead id. E.G.
+                                            [
+                                                  {
+                                                     "id": "1"
+                                                  },
+                                                  {
+                                                     "id": "2"
+                                                  }
+                                            ]
+            tokens (list, optional):		A list of dictionaries that have the key/value pairs for the
+                                            program tokens corresponding to that campaign. These tokens will
+                                            not overwrite the ones configured in Marketo.
+        """
+        call = "rest/v1/campaigns/"+str(camp_id)+"/trigger.json"
+        method = "POST"
+        payload = {"input": leads}
+        if tokens is not None:
+            payload["tokens"] = tokens
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
     
 ############################################################################################
 #                                                                                          #
@@ -862,8 +1335,9 @@ if __name__ == "__main__":
     marketo = MarketoWrapper(munchkin, client_id, client_secret)
         
 #    print(marketo.get_lead_by_id("5"))
+    print(marketo.get_multiple_leads_by_list_id(1013, batch_size=1))
 
-    print(marketo.get_email_content_by_id(1108))
+#    print(marketo.get_email_content_by_id(1108))
 
 #    print(marketo.get_email_templates())
 #    print(marketo.get_email_template_by_name("delete me"))
