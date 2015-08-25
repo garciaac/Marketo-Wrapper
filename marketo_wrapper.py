@@ -434,6 +434,96 @@ class MarketoWrapper:
         method = "GET"
         return self.__generic_api_call(call, method)
     
+    def import_lead(self, file_format, file_name, lookup_field=None, list_id=None, partition=None):
+        """
+        This method syncs leads in bulk using CSV files (or TSV/SSV). It is asynchronous, and
+        the limit on the file size is 10MB. Since it is an asynchronous call, you can schedule
+        multiple sync jobs using it, but there is a limit of 10 total file imports that can
+        be in the queue at once. 
+        
+        Args:
+            file_format (string):               The format of the file, which can be 'csv', 'tsv', or 'ssv'.
+            file_name (string):                 The path to the desired file.
+            lookup_field (string, optional):    The field to use to identify duplicates. By default, it is email.
+            list_id (int, optional):            The static list to import that leads to. If omitted, the system
+                                                will create a temporary list
+            partition (string, optional):       If partitions are setup, this should be used to specify which
+                                                partition to use. If it isn't specified, it will use the
+                                                primary partition, and the temp list will go into the first
+                                                workspace in that partition.
+        
+        Returns:
+            dict:   The response from the server. The result attribute contains a batch id which can
+                    be used to query the system for the status of the import since the import
+                    is asynchronous.
+        """
+        pass
+    
+    def get_import_status(self, batch_id):
+        """
+        This method queries for the status the import with the given batch id.
+        
+        Args:
+            batch_id (int):     The id of the desired batch. This is given in the return
+                                JSON of the import_lead call.
+        
+        Returns:
+            dict: The response from the server. It includes the status, number of leads processed,
+            numnber of failures, number of warnings, and a message.
+        """
+        call = "bulk/v1/leads/batch/"+str(batch_id)+".json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_import_failure_file(self, batch_id):
+        """
+        If an import fails, the file containing the failure can be retrieved with this method.
+        
+        Args:
+            batch_id (int):     The id of the desired batch. This is given in the return
+                                JSON of the import_lead call.
+        
+        Returns:
+            dict:   The response from the server. It returns a file in the same
+                    format that was used in the import_lead call.
+        """
+        call = "bulk/v1/leads/batch/"+str(batch_id)+"failures.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_import_warning_file(self, batch_id):
+        """
+        This is the same as get_import_failure_file except that it retrieves a file
+        with warnings instead of failures.
+        
+        Args:
+            batch_id (int):     The id of the desired batch. This is given in the return
+                                JSON of the import_lead call.
+        
+        Returns:
+            dict:   The response from the server. It returns a file in the same
+                    format that was used in the import_lead call.
+        """
+        call = "bulk/v1/leads/batch/"+str(batch_id)+"failures.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+
+    def describe_lead(self):
+        """
+        This method retrives all of the fields associated to the lead objects.
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server. The result attribute has information
+                    about all of the lead fields such as the name, type, API name,
+                    and whether or not it is editable.
+        """
+        call = "rest/v1/leads/describe.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
     def get_lead_activity_types(self):
         """
         This method returns all of the possible activity types.
@@ -461,7 +551,7 @@ class MarketoWrapper:
         Args:
             activitity_type_ids (list): A list of integers indicating the activity ids to filter on
             paging_token (string):		The paging token that will be used to iterate through the database
-            list_id (int, optional):	The id of a list of leads to retrieve activities for
+            list_id (int, optional):	The id of a list of leads to retrieve activities for.
             batch_size (int, optional):	How many results the server will return at a time. Default and max
                                         is 300.
 
@@ -512,65 +602,75 @@ class MarketoWrapper:
         # objects by default.
         return self.__generic_api_call(call, method, payload=json.dumps(payload))
     
-    def import_lead(self, file_format, file_name, lookup_field=None, list_id=None, partition=None):
+    def get_lead_changes(self, paging_token, fields, batch_size=None, list_id=None):
         """
-        This method syncs leads in bulk using CSV files (or TSV/SSV). It is asynchronous, and
-        the limit on the file size is 10MB. Since it is an asynchronous call, you can schedule
-        multiple sync jobs using it, but there is a limit of 10 total file imports that can
-        be in the queue at once. 
-        
-        Args:
-            file_format (string):               The format of the file, which can be 'csv', 'tsv', or 'ssv'.
-            file_name (string):                 The path to the desired file.
-            lookup_field (string, optional):    The field to use to identify duplicates. By default, it is email.
-            list_id (int, optional):            The static list to import that leads to. If omitted, the system
-                                                will create a temporary list
-            partition (string, optional):       If partitions are setup, this should be used to specify which
-                                                partition to use. If it isn't specified, it will use the
-                                                primary partition, and the temp list will go into the first
-                                                workspace in that partition.
-        
-        Returns:
-            dict:   The response from the server. The result attribute contains a batch id which can
-                    be used to query the system for the status of the import since the import
-                    is asynchronous.
-        """
-        pass
-    
-    def get_import_status(self, batch_id):
-        """
-        This method queries for the status the import with the given batch id.
-        
-        Args:
-            batch_id (int):     The id of the desired batch. This is given in the return
-                                JSON of the import_lead call.
-        
-        Returns:
-            dict: The response from the server. It includes the status, number of leads processed,
-            numnber of failures, number of warnings, and a message.
-        """
-        call = "bulk/v1/leads/batch/"+str(batch_id)+".json"
-        method = "GET"
-        return self.__generic_api_call(call, method)
-    
-    def get_import_failure_file(self, batch_id):
-        """
-        If an import fails, the original file being processed can be retrieved with this method.
-        
-        Args:
-            batch_id (int):     The id of the desired batch. This is given in the return
-                                JSON of the import_lead call.
-        
-        Returns:
-            dict:   The response from the server. It returns the original file in the same
-                    format that was used in the import_lead call.
-        """
-        call = "bulk/v1/leads/batch/"+str(batch_id)+"failures.json"
-        method = "GET"
-        return self.__generic_api_call(call, method)
-    
-    
+        This method retrieves all of the data value changes for leads. The paging_token
+        parameter is used to specify the timeframe (see get_paging_token()), and fields
+        is a list of field changes to look for. Data changes in fields other than the
+        ones specified in the list will not be included in the response.
 
+        Args:
+            paging_token (string):          This is used both to paginate through the
+                                            response as well as dictate the timeframe
+                                            in which to look for changes.
+            fields (list):                  This is a list that specifies which fields to
+                                            search for changes to.
+            batch_size (int, optional):	    How many results the server will return at a time. 
+                                            Default and max is 300.
+            list_id (int, optional):        The id of a list of leads to retrieve activities for.
+        """
+        call = "rest/v1/activities/leadchanges.json?"
+        if batch_size is not None:
+            call += "&batchSize="+str(batch_size)
+        if list_id is not None:
+            call += "&listId="+str(list_id)
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def delete_lead(self, leads):
+        """
+        This method deletes the given leads from the database. 
+        
+        Args:
+            leads (list):   A list of dictionaries that contain the
+                            lead ids to delete. The fomatting is as follows:
+                            {
+                                "id": 1
+                            },
+                            {
+                                "id": 2
+                            }
+        
+        Returns:
+            dict:   The response from the server that contains all of the status
+                    information for each of the leads.
+        """
+        call = "rest/v1/leads.json"
+        method = "DELETE"
+        payload = {"input": leads}
+        return self.__generic_api_call(self, method, payload=json.dumps(payload))
+    
+    def get_deleted_leads(self, paging_token, batch_size=None):
+        """
+        This method retrieves all of the deleted leads from Marketo. This information
+        is unconfirmed, but the understanding on the SC team is that this call can be
+        used for leads deleted within the 90 days prior to making the call.
+        
+        Args: 
+            paging_token (string):          This is used both to paginate through the response.
+        Returns:
+            dict:   The response from the server that has the lead ids that
+                    were deleted as well as the date they were deleted.
+        """
+        call = "rest/v1/activities/deletedleads.json?nextPageToken="+str(paging_token)
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def update_lead_partition(self, leads):
+        """
+        This method updates the lead partition that the given leads are housed in.
+        """
+    
 ############################################################################################
 #                                                                                          #
 #                                   List API Calls                                         # 
@@ -1320,6 +1420,76 @@ class MarketoWrapper:
         payload["name"] = name
         payload["folder"] = folder
         return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+############################################################################################
+#                                                                                          #
+#                               Administrative API Calls                                   # 
+#                                                                                          #             
+############################################################################################
+    
+    def get_daily_usage(self):
+        """
+        This method retrieves the number of API calls used across all API users for that
+        day. This counter is reset at 12:00am PST. 
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server that includes each API user and the
+                    associated number of API calls that user has made.
+        """
+        call = "rest/v1/stats/usage.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_weekly_usage(self):
+        """
+        This method is identical to get_daily_usage() except that it returns
+        results for the 7 days prior to when the call is made.
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server that includes each API user and the
+                    associated number of API calls that user has made.
+        """
+        call = "rest/v1/stats/usage/last7days.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_daily_errors(self):
+        """
+        This method retrieves the number of API calls that resulted in errors. The response
+        is sorted by Marketo error code.
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server that includes each error code
+                    and the amount of times it was returned.
+        """
+        call = "rest/v1/stats/errors.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def get_daily_errors(self):
+        """
+        This method is identical to get_daily_errors() except that it returns
+        results for the 7 days prior to when the call is made.
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server that includes each error code
+                    and the amount of times it was returned.
+        """
+        call = "rest/v1/stats/errors/last7days.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
     
 ############################################################################################
 #                                                                                          #
