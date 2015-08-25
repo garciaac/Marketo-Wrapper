@@ -8,15 +8,21 @@ import settings
 
 # TODO
 
-# Add return values to the Returns documentation
-# Allow for integer parameters
 # Non-English content for asset API
-# Figure out how to fix the POST calls
-# Standardize the comment syntax. Periods at the end of param descriptions?
+# Figure out how to fix the POST calls that take multipart files
+# Standardize the comment syntax. Periods at the end of param descriptions.
 # Do more elegant error handling
 # Be more consistent with folder_id vs. folder
 # Double check all the call URLs
 # Test if you can include a cookie value in create/update and Marketo will automatically merge the activities
+# Explicitly cast all variables to protect against type errors at runtime
+# Refactor API calls into similar groups. E.G. create/update leads an opps is duplicated code. So are opp and opp role.
+# Possible eliminate documentation redundancies
+
+# Unfinished API Calls
+
+# get_custom_objects
+# get_opportunities
 
 ############################################################################################
 #                                                                                          #
@@ -31,6 +37,14 @@ def listify_parameter(name, values):
     format the REST URL is to append the same parameter multiple times
     e.g. ...example.json?id=value1&id=value2&id=value3 etc. This method outputs the
     repeated parameter name with each value given.
+    
+    Args:
+        name (string):  The name of the parameter to include in the URL.
+        values (list):  The list of values to use in the URL.
+    
+    Returns:
+        string: A query string that has "name=value1&name=value2..." for each
+                value given in the input list.
     """
     query_string = ""
     for ii in range(len(values)):
@@ -139,7 +153,7 @@ class MarketoWrapper:
         """
         # Default parameters in Python work differently than in other languages. See
         # this link for a full description: http://effbot.org/zone/default-values.htm
-        if content_type is None:
+         if content_type is None:
             content_type = "application/json"
         if payload is None:
             payload = {}
@@ -352,11 +366,11 @@ class MarketoWrapper:
         if action is not None:
             payload["action"] = str(action)
         if lookup_field is not None:
-            payload["lookupField"] = lookup_field
+            payload["lookupField"] = str(lookup_field)
         if async is not None:
             payload["asyncProcessing"] = str(async)
         if partition is not None:
-            payload["partitionName"] = partition
+            payload["partitionName"] = str(partition)
         # Use json.dumps() because the httplib2 does not serialize dictionary
         # objects by default.
         return self.__generic_api_call(call, method, payload=json.dumps(payload))
@@ -669,7 +683,29 @@ class MarketoWrapper:
     def update_lead_partition(self, leads):
         """
         This method updates the lead partition that the given leads are housed in.
+        
+        Args:
+            leads (list):   This is a list of dictionaries that represent the leads to
+                            update. Each dictionary should have the lead id and the partition
+                            name to place the lead in. E.G.
+                            [  
+                                {  
+                                "id":1234,
+                                "partitionName" : "Europe"
+                                },
+                                {  
+                                "id":2322,
+                                "partitionName" : "Europe"
+                                }
+                            ]
+        
+        Returns:
+            dict:   The response from the server that has the status information for each lead.
         """
+        call = "rest/v1/leads/partitions.json"
+        method = "POST"
+        payload = {"input": leads}
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
     
 ############################################################################################
 #                                                                                          #
@@ -930,6 +966,332 @@ class MarketoWrapper:
         if tokens is not None:
             payload["tokens"] = tokens
         return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+############################################################################################
+#                                                                                          #
+#                             Opportunity API Calls                                        # 
+#                                                                                          #             
+############################################################################################
+    
+    def describe_opportunity(self):
+        """
+        This API call retrieves all of the metadata associated with the opportunity
+        object including all of the fields.
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server that includes the id field, all of the
+                    dedupe fields, the searchable fields and the non-searchable fields.
+        """
+        call = "rest/v1/opportunities/describe.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def create_update_opportunities(self, opps, action=None, dedupe_by=None):
+        """
+        This method makes takes a list of dictionaries that represent all of the oportunities
+		and their attributes that should be updated in Marketo. It takes that list, and
+		does an upsert operation to the Marketo database.
+        
+        Args:
+            opps (list):                        A list of dicts containing all of the opps to upload
+            action (string, optional):          This tells the server how to process the objects. 
+                                                The possible values are: 
+                                                'createOnly'
+                                                'updateOnly'
+                                                'createOrUpdate' --> default if parameter isn't given
+            dedupe_by (string, optional):       This specifies how to dedupe the objects. The allowed
+                                                values are:
+                                                'dedupeFields' - Default. These are set when the object
+                                                                 is created.
+                                                'idField' - The unique id of the object.
+            
+        Returns:
+            dict:   A dictionary that has the completion status for each opportunity in the input.
+        """
+        call = "rest/v1/opportunities.json"
+        method = "POST"
+        payload = {"input": opps}
+        if action is not None:
+            payload["action"] = str(action)
+        if dedupe_by is not None:
+            payload["dedupeBy"] = str(dedupe_by)
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def delete_opportunities(self, opps, delete_by=None):
+        """
+        This method makes takes a list of dictionaries that represent all of the opportunities.
+		and their attributes that should be updated in Marketo. It takes that list, and
+		does an upsert operation to the Marketo database.
+        
+        Args:
+            name (string):                      The name of the custom object definition
+            opps (list):                        A list of dicts containing all of the opportunities to delete.
+            delete_by (string, optional):       This specifies how to dedupe the objects. The allowed
+                                                values are:
+                                                'dedupeFields' - Default. These are set when the object
+                                                                 is created.
+                                                'idField' - The unique id of the object.
+            
+        Returns:
+            dict:   A dictionary that has the completion status for each object. in the input.
+        """
+        call = "rest/v1/opportunities/delete.json"
+        method = "POST"
+        payload = {"input": opps}
+        if delete_by is not None:
+            payload["deleteBy"] = str(delete_by)
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def get_oportunities(self, filter_type, filter_values=None, fields=None, 
+                           paging_token=None, batch_size=None):
+        """
+        This call searches for opportunities and returns the ones that fit the search
+        criteria. The semantics of this API call are almost identical to
+        get_multiple_leads_by_filter_type(). 
+        
+        Args:
+            filter_type (string):               This should be the API name of the field to filter on.
+            filter_values (list, optional):     This is a list of possible values for the field. If a lead's
+                                                field matches any of the given values, it will be included in the response.
+            fields (list, optional):            A list of desired fields to be included in the response.
+            paging_token (string, optional):    A token that will be used to start pagination through large result sets.
+                                                It is recommended to always include this parameter, so that it will be
+                                                guaranteed that all results are received.
+            batch_size (int, optional):         The number of objects to include in the response. Default and max is 300.
+            
+        Returns:
+            dict:   The response from the server. It includes metadata on each object that matches
+                    the search criteria such as created date, modified date, Marketo id etc.
+        """
+        call = "rest/v1/opportunities.json"
+        return
+    
+    def describe_opportunity_role(self):
+        """
+        This API call retrieves all of the metadata associated with the opportunity role
+        object including all of the fields. The opportunity role object is what bridges
+        the opportunity object with the lead object.
+        
+        Args:
+            None
+            
+        Returns:
+            dict:   The response from the server that includes the id field, all of the
+                    dedupe fields, the searchable fields and the non-searchable fields.
+        """
+        call = "rest/v1/opportunities/roles/describe.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def create_update_opportunity_roles(self, roles, action=None, dedupe_by=None):
+        """
+        This method makes takes a list of dictionaries that represent all of the oportunity roles.
+		and their attributes that should be updated in Marketo. It takes that list, and
+		does an upsert operation to the Marketo database.
+        
+        Args:
+            roles (list):                       A list of dicts containing all of the roles. to upload
+            action (string, optional):          This tells the server how to process the objects. 
+                                                The possible values are: 
+                                                'createOnly'
+                                                'updateOnly'
+                                                'createOrUpdate' --> default if parameter isn't given
+            dedupe_by (string, optional):       This specifies how to dedupe the objects. The allowed
+                                                values are:
+                                                'dedupeFields' - Default. These are set when the object
+                                                                 is created.
+                                                'idField' - The unique id of the object.
+            
+        Returns:
+            dict:   A dictionary that has the completion status for each opportunity in the input.
+        """
+        call = "rest/v1/opportunities/roles.json"
+        method = "POST"
+        payload = {"input": roles}
+        if action is not None:
+            payload["action"] = str(action)
+        if dedupe_by is not None:
+            payload["dedupeBy"] = str(dedupe_by)
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def delete_opportunity_roles(self, roles, delete_by=None):
+        """
+        This method makes takes a list of dictionaries that represent all of the opportunity roles.
+		and their attributes that should be updated in Marketo. It takes that list, and
+		does an upsert operation to the Marketo database.
+        
+        Args:
+            roles (list):                       A list of dicts containing all of the opportunity roles to delete.
+            delete_by (string, optional):       This specifies how to dedupe the objects. The allowed
+                                                values are:
+                                                'dedupeFields' - Default. These are set when the object
+                                                                 is created.
+                                                'idField' - The unique id of the object.
+            
+        Returns:
+            dict:   A dictionary that has the completion status for each object. in the input.
+        """
+        call = "rest/v1/opportunities/roles/delete.json"
+        method = "POST"
+        payload = {"input": roles}
+        if delete_by is not None:
+            payload["deleteBy"] = str(delete_by)
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def get_ooportunity_roles(self, filter_type, filter_values=None, fields=None, 
+                                paging_token=None, batch_size=None):
+        """
+        This call searches for opportunity roles and returns the ones that fit the search
+        criteria. The semantics of this API call are almost identical to
+        get_multiple_leads_by_filter_type(). 
+        
+        Args:
+            filter_type (string):               This should be the API name of the field to filter on.
+            filter_values (list, optional):     This is a list of possible values for the field. If a lead's
+                                                field matches any of the given values, it will be included in the response.
+            fields (list, optional):            A list of desired fields to be included in the response.
+            paging_token (string, optional):    A token that will be used to start pagination through large result sets.
+                                                It is recommended to always include this parameter, so that it will be
+                                                guaranteed that all results are received.
+            batch_size (int, optional):         The number of objects to include in the response. Default and max is 300.
+            
+        Returns:
+            dict:   The response from the server. It includes metadata on each object that matches
+                    the search criteria such as created date, modified date, Marketo id etc.
+        """
+        call = "rest/v1/opportunities/roles.json"
+        return
+    
+############################################################################################
+#                                                                                          #
+#                             Custom Object API Calls                                      # 
+#                                                                                          #             
+############################################################################################
+    
+    def list_custom_objects(self, names=None):
+        """
+        This method retrieves the definition of the custom objects given by the names
+        parameter. If the parameter isn't used, then all definitions are returned.
+        
+        Args:
+            names (list, optional): The names of the custom object definitions to query. If
+                                    omitted, the system will return all definitions.
+        
+        Returns:
+            dict:   The response from the server that contains all of the information
+                    about the custom objects such as display name, dedupe fields, relationships etc.
+        """
+        call = "rest/v1/customobjects.json?"
+        if names is not None:
+            call += "&names="+",".join(map(str, names))
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    def describe_custom_object(self, name):
+        """
+        Similar to list_custom_objects(), this method retrieves metadata about custom
+        objects. The difference is that this method will only return one object definition,
+        but the definition returned here includes all of the custom object fields.
+        
+        Args:
+            name (string):  The name of the custom object to describe.
+            
+        Returns:
+            dict:   The response frm the server that includes all information from 
+                    list_custom_objects() but includes all of the fields.
+        """
+        call = "rest/v1/customobjects/"+str(name)+"/describe.json"
+        method = "GET"
+        return self.__generic_api_call(call, method)
+    
+    # TODO check for >300
+    def create_update_custom_objects(self, name, objects, action=None, dedupe_by=None):
+        """
+        This method makes takes a list of dictionaries that represent all of the objects
+		and their attributes that should be updated in Marketo. It takes that list, and
+		does an upsert operation to the Marketo database.
+        
+        Args:
+            name (string):                      The name of the custom object definition
+            objects (list):                     A list of dicts containing all of the objects to upload
+            action (string, optional):          This tells the server how to process the objects. 
+                                                The possible values are: 
+                                                'createOnly'
+                                                'updateOnly'
+                                                'createOrUpdate' --> default if parameter isn't given
+            dedupe_by (string, optional):       This specifies how to dedupe the objects. The allowed
+                                                values are:
+                                                'dedupeFields' - Default. These are set when the object
+                                                                 is created.
+                                                'idField' - The unique id of the object.
+            
+        Returns:
+            dict:   A dictionary that has the completion status for each object. in the input.
+        """
+        call = "rest/v1/customobjects/"+str(name)+".json"
+        method = "POST"
+        payload = {"input": objects}
+        if action is not None:
+            payload["action"] = str(action)
+        if dedupe_by is not None:
+            payload["dedupeBy"] = str(dedupe_by)
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    def delete_custom_objects(self, name, objects, delete_by=None):
+        """
+        This method makes takes a list of dictionaries that represent all of the objects
+		and their attributes that should be deleted in Marketo. It takes that list, and
+		does an upsert operation to the Marketo database.
+        
+        Args:
+            name (string):                      The name of the custom object definition
+            objects (list):                     A list of dicts containing all of the objects to delete.
+            delete_by (string, optional):       This specifies how to dedupe the objects. The allowed
+                                                values are:
+                                                'dedupeFields' - Default. These are set when the object
+                                                                 is created.
+                                                'idField' - The unique id of the object.
+            
+        Returns:
+            dict:   A dictionary that has the completion status for each object. in the input.
+        """
+        call = "rest/v1/customobjects/"+str(name)+"/delete.json"
+        method = "POST"
+        payload = {"input": objects}
+        if delete_by is not None:
+            payload["deleteBy"] = str(delete_by)
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    
+    # TODO - test how scalable this is as a true GET request. I don't think it will work with 
+    # the filterType thing and how you need to use the request body if you have more than 
+    # one searchable field.
+    def get_custom_objects(self, name, filter_type, filter_values=None, fields=None, 
+                           paging_token=None, batch_size=None):
+        """
+        This call searches for custom objects and returns the ones that fit the search
+        criteria. The semantics of this API call are almost identical to
+        get_multiple_leads_by_filter_type(). 
+        
+        Args:
+            name (string):                      The name of the custom object definition.
+            filter_type (string):               This should be the API name of the field to filter on.
+            filter_values (list, optional):     This is a list of possible values for the field. If a lead's
+                                                field matches any of the given values, it will be included in the response.
+            fields (list, optional):            A list of desired fields to be included in the response.
+            paging_token (string, optional):    A token that will be used to start pagination through large result sets.
+                                                It is recommended to always include this parameter, so that it will be
+                                                guaranteed that all results are received.
+            batch_size (int, optional):         The number of objects to include in the response. Default and max is 300.
+            
+        Returns:
+            dict:   The response from the server. It includes metadata on each object that matches
+                    the search criteria such as created date, modified date, Marketo id etc.
+        """
+        call = "rest/v1/customobjects/"+str(name)+".json?filterType="+str(filter_type)
+        return
     
 ############################################################################################
 #                                                                                          #
