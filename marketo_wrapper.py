@@ -5,15 +5,10 @@ import httplib2
 import json
 import logging
 import settings
-#from urllib import urlencode
 
 # TODO
 
-# Add return values to the Returns documentation
-# Allow for integer parameters - decide if you actually want this. I don't so fix it.
-# Non-English content for asset API
 # Figure out how to fix the POST calls
-# Standardize the comment syntax. Periods at the end of param descriptions?
 
 class MarketoWrapper:
     """
@@ -64,7 +59,7 @@ class MarketoWrapper:
 #                                                                                          #             
 ############################################################################################
     
-    def __generateAccessToken(self, munchkin_id):
+    def __generateAccessToken(self):
         """
         This method requests a new access token from the REST API identity endpoint
         
@@ -119,7 +114,7 @@ class MarketoWrapper:
             
         # Check to see if the token has expired. If so, generate a new one.
         if self.__expire_time < time.time():
-            self.__token = self.__generateAccessToken(self.__munchkin)
+            self.__token = self.__generateAccessToken()
         
         # Add the access token to the HTTP header. 
         headers["Authorization"] = "Bearer "+self.__token
@@ -235,6 +230,22 @@ class MarketoWrapper:
 ############################################################################################
     
     def schedule_campaign(self, id, tokens=None, run_at=None, clone_to=None):
+        """
+        This method schedules the given campaign to run with the given parameters.
+        
+        Args:
+            id (string):        The id of the campaign that should be run.
+            tokens (list):      A list of dictionaries that represent the tokens that should
+                                be used.
+            run_at (string):    The time that the campaign should run. If blank, it is set to 
+                                five minutes.
+            clone_to (string):  If this is set, the campaign's parent program will be cloned to 
+                                the specified location, and then the new campaign will be run. It
+                                will clone to the same program folder.
+            
+        Returns:
+            dict:   The response from the server
+        """
         call = "rest/v1/campaigns/"+id+"/schedule.json"
         method = "POST"
         payload = {}
@@ -244,8 +255,7 @@ class MarketoWrapper:
             payload["runAt"] = run_at
         if clone_to is not None:
             payload["cloneToProgramName"] = clone_to
-        
-        return self.__generic_api_call(call, method, json.dumps({"input": payload}))
+        return self.__generic_api_call(call, method, payload=json.dumps({"input": payload}))
     
 ############################################################################################
 #                                                                                          #
@@ -330,7 +340,7 @@ class MarketoWrapper:
         Returns:
             dict:   The response from the server
         """
-        call = "rest/asset/v1/folders.json?name="+name+"&parent="+str(parent)
+        call = "rest/asset/v1/folders.json?name="+name+"&parent="+parent
         method = "POST"
         
         if description is not None:
@@ -348,7 +358,7 @@ class MarketoWrapper:
         Returns:
             dict:   The response from the server
         """
-        call = "rest/asset/v1/folder/"+str(folder_id)+"/delete.json"
+        call = "rest/asset/v1/folder/"+folder_id+"/delete.json"
         method = "POST"
         return self.__generic_api_call(call, method)
     
@@ -366,7 +376,7 @@ class MarketoWrapper:
         Returns:
             dict:   The response from the server
         """
-        call = "rest/asset/v1/folder/"+str(folder_id)+".json"
+        call = "rest/asset/v1/folder/"+folder_id+".json"
         method = "POST"
         payload = {}
         if description is not None:
@@ -383,18 +393,20 @@ class MarketoWrapper:
 #                                                                                          #             
 ############################################################################################
         
-    def create_token(self, parent_id, type, name, value):
+    def create_token(self, parent_id, parent_type, type, name, value):
         """
         This method creates a token at the folder level or the program level.
         
         Args:
-            parent_id (int):    The id of the folder/program to place the token in
-            type (string):      The type of the token. See below for list of types.
-            name (string):      The name of the token
-            value (string):     The value of the token. If it is a date token, it must
-                                be in the format yyyy-mm-dd. If it is a score, it must
-                                be preceeded by a +, - or = to indicate a score increment,
-                                decrement, or reset respectively.
+            parent_id (int):        The id of the folder/program to place the token in.
+            parent_type (string):   Either "Folder" or "Program" indicating whether the parent
+                                    is a folder or a program.
+            type (string):          The type of the token. See below for list of types.
+            name (string):          The name of the token
+            value (string):         The value of the token. If it is a date token, it must
+                                    be in the format yyyy-mm-dd. If it is a score, it must
+                                    be preceeded by a +, - or = to indicate a score increment,
+                                    decrement, or reset respectively.
             
         Returns:
             dict:   The response from the server
@@ -414,10 +426,13 @@ class MarketoWrapper:
         """
         call = "rest/asset/v1/folder/"+parent_id+"/tokens.json"
         method = "POST"
-        payload = {"type": type,
-                   "name": name,
-                   "value": value}
-        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+#        payload = { "folderType": parent_type,
+#                    "type": type,
+#                    "name": name,
+#                    "value": value}
+#        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+#        payload = "folderType="+parent_type+"&type="+type+"&name="+name+"&value="+value
+#        return self.__generic_api_call(call, method, payload=payload)
         
     def get_tokens(self, parent_id):
         """
@@ -725,6 +740,4 @@ if __name__ == "__main__":
 #    print (marketo.update_folder(129, "stuff", "Blog Changed"))
 
 #    print (marketo.get_tokens(129))
-
-    for ii in range(200):
-        print(marketo.get_lead_by_id("5", "firstName"))
+#    print (marketo.create_token("1083", "Program", "text", "api token", "Hello there!"))
