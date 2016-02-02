@@ -4,9 +4,7 @@ import time
 import httplib2
 import json
 import logging
-import settings
-import time
-from statistics import mean
+#import settings
 
 # TODO
 
@@ -50,19 +48,6 @@ def listify_parameter(name, values):
     for ii in range(len(values)):
         query_string += "&"+str(name)+"="+str(values[ii])
     return query_string
-
-def convert_to_ms(seconds):
-    """
-    This method is for use inside the python map function. It takes in a floating
-    point value in seconds, and returns the corresponsing value in miliseconds.
-    
-    Args:
-        seconds (float): The value to convert
-    
-    Returns:
-        float: A floating point representing the input in miliseconds.
-    """
-    return 1000*float(seconds)
 
 ############################################################################################
 #                                                                                          #
@@ -161,7 +146,7 @@ class MarketoWrapper:
                                               inside the method, so it does not need to be added manually from outside.
         
         Returns:
-			dict: A dictionary representing the JSON response from the Marketo server.
+            dict: A dictionary representing the JSON response from the Marketo server.
         
         """
         # Default parameters in Python work differently than in other languages. See
@@ -218,7 +203,6 @@ class MarketoWrapper:
         tokens are for bulk API calls where the server needs to send multiple responses.
         This method should be used when initiating a bulk call, and the server will then
         return subsequent paging tokens in order to keep place inside the database.
-
         Args:
             since_date_time (string):    This is used to initiate the database search.
                                          It does not need to be any specific time, but
@@ -230,7 +214,7 @@ class MarketoWrapper:
         method = "GET"
         response = self.__generic_api_call(call, method)
         return response["nextPageToken"]
-	
+    
 ############################################################################################
 #                                                                                          #
 #                                   Lead API Calls                                         # 
@@ -240,12 +224,12 @@ class MarketoWrapper:
     def get_lead_by_id(self, lead, fields=None):
         """
         This method retrieves a lead's attributes by its id. The fields parameter can specify 
-		particular fields to return. The default return fields can be found in the developer's
-		documentation.
+        particular fields to return. The default return fields can be found in the developer's
+        documentation.
         
         Args:
-            lead (string):   			The id of the lead needed.
-			fields (list, optional):	A list of fields to include in the response.
+            lead (string):              The id of the lead needed.
+            fields (list, optional):    A list of fields to include in the response.
             
         Returns:
             dict:   A dictionary that contains all of the lead attributes.
@@ -351,8 +335,8 @@ class MarketoWrapper:
     def create_update_leads(self, leads, action=None, lookup_field=None, async=None, partition=None):
         """
         This method makes takes an array of dictionaries that represent all of the leads
-		and their attributes that should be updated in Marketo. It takes that array, and
-		does an upsert operation to the Marketo database.
+        and their attributes that should be updated in Marketo. It takes that array, and
+        does an upsert operation to the Marketo database.
         
         Args:
             leads (list):                       A list of dicts containing all of the leads to upload
@@ -405,14 +389,14 @@ class MarketoWrapper:
         Returns:
             dict: The response from the server indicating success or failure.
         """
-        call = "rest/v1/leads/"+str(lead_id)+"/associate.json?cookie="+str(cookie)
+        call = "rest/v1/leads/"+str(lead_id)+"/associate.json?cookie="+str(cokie)
         method = "POST"
         return self.__generic_api_call(call, method)
     
     def merge_lead(self, winner, losers, crm_merge=None):
         """
         This method merges two or more leads. The winner's attributes will be preferred over the loser(s).
-		Optionally, the leads can be merged in CRM as well. The convention of the API call is such that 
+        Optionally, the leads can be merged in CRM as well. The convention of the API call is such that 
         the winning lead's id is given in the URL, and the losing lead is passed as the leadIds paramenter
         in the API call. This implementation only uses the leadIds parameter as opposed to the leadId
         parameter. The difference is that the leadId takes a single id and leadIds takes a list. 
@@ -427,11 +411,9 @@ class MarketoWrapper:
                                         semantics of this parameter:
                                         
         Use only one winning lead id and one losing lead id when enabling this parameter.
-
         If both leads are in SFDC and one is a CRM lead and the other is a CRM contact, then the 
         winner is the CRM contact (regardless which lead is specified as winner).  
         Note that the leads are merged within SFDC.
-
         If one of the leads is in SFDC and the other is Marketo only, then the winner is the 
         SFDC lead (regardless of which lead is specified as winner).
                                             
@@ -559,13 +541,13 @@ class MarketoWrapper:
             
         Returns:
             dict:   The response from the server. The "result" attribute contains an array 
-					of dictionaries that represent each activity types. It includes the 
-					activity id, name, attributes, description etc.
+                    of dictionaries that represent each activity types. It includes the 
+                    activity id, name, attributes, description etc.
         """
         call = "rest/v1/activities/types.json"
         method = "GET"
         return self.__generic_api_call(call, method)
-	
+    
     def get_lead_activities(self, activity_type_ids, paging_token, list_id=None, batch_size=None):
         """
         This method returns a list of lead activities that are filtered by the activity_type_ids
@@ -573,20 +555,18 @@ class MarketoWrapper:
         in the parameter. The paging token is used because the list returned by the server may be 
         too large for a single response, and must be fragmented across responses. See this resource
         for more on paging tokens: http://developers.marketo.com/documentation/rest/get-paging-token
-
         Args:
             activitity_type_ids (list): A list of integers indicating the activity ids to filter on
-            paging_token (string):		The paging token that will be used to iterate through the database
-            list_id (int, optional):	The id of a list of leads to retrieve activities for.
-            batch_size (int, optional):	How many results the server will return at a time. Default and max
+            paging_token (string):      The paging token that will be used to iterate through the database
+            list_id (int, optional):    The id of a list of leads to retrieve activities for.
+            batch_size (int, optional): How many results the server will return at a time. Default and max
                                         is 300.
-
         Returns:
             dict:   The response from the server. The "result" attribute contains an array 
                     of dictionaries that represent the lead activities. They include the 
                     lead id, activity type id, primary attribute value etc.
         """
-        call = 	"rest/v1/activities.json?"+"nextPageToken="+paging_token
+        call =  "rest/v1/activities.json?"+"nextPageToken="+paging_token
         if list_id is not None:
             call += "&listId="+str(list_id)
         if batch_size is not None:
@@ -599,7 +579,6 @@ class MarketoWrapper:
     def add_lead_activities(self, activities):
         """
         This method appends the given activities to the Marketo lead database.
-
         Args:
             activities (list):  A list of dicts containing all of the activites to upload.
                                 The format should be of the following:
@@ -616,7 +595,6 @@ class MarketoWrapper:
                                     ]
                                 }
                                 Please see the developer documentation for more.
-
         Returns:
             dict:   The response from the server. The "result" attribute contains an array
                     of dictionaries that contain the completion status for each activity.
@@ -634,14 +612,13 @@ class MarketoWrapper:
         parameter is used to specify the timeframe (see get_paging_token()), and fields
         is a list of field changes to look for. Data changes in fields other than the
         ones specified in the list will not be included in the response.
-
         Args:
             paging_token (string):          This is used both to paginate through the
                                             response as well as dictate the timeframe
                                             in which to look for changes.
             fields (list):                  This is a list that specifies which fields to
                                             search for changes to.
-            batch_size (int, optional):	    How many results the server will return at a time. 
+            batch_size (int, optional):     How many results the server will return at a time. 
                                             Default and max is 300.
             list_id (int, optional):        The id of a list of leads to retrieve activities for.
         """
@@ -781,30 +758,30 @@ class MarketoWrapper:
         method = "GET"
         return self.__generic_api_call(call, method)
     
-#     def add_leads_to_list(self, list_id, leads):
-#        """
-#        This method will add the given leads to the specified list. 
-#        
-#        Args:
-#            list_id (int):  The id of the list to append to.
-#            leads (list):   A list of dictionaries containing all of the leads to add. 
-#                            The only lead attribute required is the lead id. E.G.
-#                            [
-#                                  {
-#                                     "id": "1"
-#                                  },
-#                                  {
-#                                     "id": "2"
-#                                  }
-#                            ]
-#        Returns:
-#            dict:   The response from the server. The result attribute contains the status information
-#                    for each lead.
-#        """
-#        call = "rest/v1/lists/"+str(list_id)+"/leads.json"
-#        method = "POST"
-#        payload = {"input": leads}
-#        return self.__generic_api_call(call, method, payload=json.dumps(payload))
+    def add_leads_to_list(self, list_id, leads):
+        """
+        This method will add the given leads to the specified list. 
+        
+        Args:
+            list_id (int):  The id of the list to append to.
+            leads (list):   A list of dictionaries containing all of the leads to add. 
+                            The only lead attribute required is the lead id. E.G.
+                            [
+                                  {
+                                     "id": "1"
+                                  },
+                                  {
+                                     "id": "2"
+                                  }
+                            ]
+        Returns:
+            dict:   The response from the server. The result attribute contains the status information
+                    for each lead.
+        """
+        call = "rest/v1/lists/"+str(list_id)+"/leads.json"
+        method = "POST"
+        payload = {"input": leads}
+        return self.__generic_api_call(call, method, payload=json.dumps(payload))
     
     def remove_leads_from_list(self, list_id, leads):
         """
@@ -922,18 +899,16 @@ class MarketoWrapper:
         schedule campaign and request campaign is that schedule campaign uses a smart list
         inside of Marketo whereas request campaign tells Marketo which leads to run through
         the campaign. 
-
         Args:
-            camp_id (int):					The id of the campaign to be scheduled. This can be retrieved by
+            camp_id (int):                  The id of the campaign to be scheduled. This can be retrieved by
                                             making the get multiple campaigns call.
-            tokens (list, optional):		A list of dictionaries that have the key/value pairs for the
+            tokens (list, optional):        A list of dictionaries that have the key/value pairs for the
                                             program tokens corresponding to that campaign. These tokens will
                                             not overwrite the ones configured in Marketo.
-            run_at (string, optional):		A datetime string for when the campaign should run. If omitted,
+            run_at (string, optional):      A datetime string for when the campaign should run. If omitted,
                                             it defaults to five minutes in the future.
-            clone_to (string, optional):	If this parameter is used, the parent program of the campaign will be
+            clone_to (string, optional):    If this parameter is used, the parent program of the campaign will be
                                             cloned, and the newly created campaign will be the one to run.
-
         Returns:
             dict:   The response from the server that indicates success or failure.
         """
@@ -954,9 +929,8 @@ class MarketoWrapper:
         """
         This method fires the 'Campaign is Requested' trigger inside Marketo. This is used to
         run leads through a campaign in Marketo without having to construct a smart list.
-
         Args:
-            camp_id (int):					The id of the campaign. This can be retrieved by
+            camp_id (int):                  The id of the campaign. This can be retrieved by
                                             making the get multiple campaigns call.
             leads (list):                   A list of dictionaries containing all of the leads. 
                                             The only lead attribute required is the lead id. E.G.
@@ -968,7 +942,7 @@ class MarketoWrapper:
                                                      "id": "2"
                                                   }
                                             ]
-            tokens (list, optional):		A list of dictionaries that have the key/value pairs for the
+            tokens (list, optional):        A list of dictionaries that have the key/value pairs for the
                                             program tokens corresponding to that campaign. These tokens will
                                             not overwrite the ones configured in Marketo.
         """
@@ -1004,8 +978,8 @@ class MarketoWrapper:
     def create_update_opportunities(self, opps, action=None, dedupe_by=None):
         """
         This method makes takes a list of dictionaries that represent all of the oportunities
-		and their attributes that should be updated in Marketo. It takes that list, and
-		does an upsert operation to the Marketo database.
+        and their attributes that should be updated in Marketo. It takes that list, and
+        does an upsert operation to the Marketo database.
         
         Args:
             opps (list):                        A list of dicts containing all of the opps to upload
@@ -1110,8 +1084,8 @@ class MarketoWrapper:
     def create_update_opportunity_roles(self, roles, action=None, dedupe_by=None):
         """
         This method makes takes a list of dictionaries that represent all of the oportunity roles
-		and their attributes that should be updated in Marketo. It takes that list, and
-		does an upsert operation to the Marketo database.
+        and their attributes that should be updated in Marketo. It takes that list, and
+        does an upsert operation to the Marketo database.
         
         Args:
             roles (list):                       A list of dicts containing all of the roles. to upload
@@ -1220,8 +1194,8 @@ class MarketoWrapper:
     def create_update_companies(self, companies, action=None, dedupe_by=None):
         """
         This method makes takes a list of dictionaries that represent all of the companies
-		and their attributes that should be updated in Marketo. It takes that list, and
-		does an upsert operation to the Marketo database.
+        and their attributes that should be updated in Marketo. It takes that list, and
+        does an upsert operation to the Marketo database.
         
         Args:
             companies (list):                   A list of dicts containing all of the roles. to upload
@@ -1330,8 +1304,8 @@ class MarketoWrapper:
     def create_update_sales_persons(self, people, action=None, dedupe_by=None):
         """
         This method makes takes a list of dictionaries that represent all of the companies
-		and their attributes that should be updated in Marketo. It takes that list, and
-		does an upsert operation to the Marketo database.
+        and their attributes that should be updated in Marketo. It takes that list, and
+        does an upsert operation to the Marketo database.
         
         Args:
             people (list):                      A list of dicts containing all of the roles. to upload
@@ -1461,8 +1435,8 @@ class MarketoWrapper:
     def create_update_custom_objects(self, name, objects, action=None, dedupe_by=None):
         """
         This method makes takes a list of dictionaries that represent all of the objects
-		and their attributes that should be updated in Marketo. It takes that list, and
-		does an upsert operation to the Marketo database.
+        and their attributes that should be updated in Marketo. It takes that list, and
+        does an upsert operation to the Marketo database.
         
         Args:
             name (string):                      The name of the custom object definition
@@ -1493,8 +1467,8 @@ class MarketoWrapper:
     def delete_custom_objects(self, name, objects, delete_by=None):
         """
         This method makes takes a list of dictionaries that represent all of the objects
-		and their attributes that should be deleted in Marketo. It takes that list, and
-		does an upsert operation to the Marketo database.
+        and their attributes that should be deleted in Marketo. It takes that list, and
+        does an upsert operation to the Marketo database.
         
         Args:
             name (string):                      The name of the custom object definition
@@ -1562,7 +1536,7 @@ class MarketoWrapper:
     def browse_folders(self, root, offset=None, max_depth=None, max_return=None, workspace=None):
         """
         This method returns a list of folders in Marketo. It is used to most commonly to retrieve 
-		folder ids based on other folder information.
+        folder ids based on other folder information.
         
         Args:
             root (int):                     The id of the parent folder
@@ -1573,13 +1547,13 @@ class MarketoWrapper:
             
         Returns:
             dict:   The response from the server. The "result" attribute contains all of the 
-					folder attributes for the folders in Marketo.
+                    folder attributes for the folders in Marketo.
         """
         call = "rest/asset/v1/folders.json?root="+str(root)
         method = "GET"
         
         if offset is not None:
-        	call += "&offSet="+str(offset)
+            call += "&offSet="+str(offset)
         if max_depth is not None:
             call += "&maxDepth="+str(max_depth)
         if max_return is not None:
@@ -1598,8 +1572,8 @@ class MarketoWrapper:
             
         Returns:
             dict:   The response from the server. The "result" attribute contains
-					the same information that an individual result from the browse
-					folders call.
+                    the same information that an individual result from the browse
+                    folders call.
         """
         call = "rest/asset/v1/folder/"+str(folder_id)+".json"
         method = "GET"
@@ -1616,7 +1590,7 @@ class MarketoWrapper:
             
         Returns:
             dict:   The response from the server. The same data that is returned
-					by the get folder by id call.
+                    by the get folder by id call.
         """
         call = "rest/asset/v1/folder/byName.json?name="+folder_name
         method = "GET"
@@ -1640,8 +1614,8 @@ class MarketoWrapper:
             
         Returns:
             dict:   The response from the server that indicates success or failure. It
-					also includes the metadata similar to get folder by id, get folder by
-					name, and browse folders.
+                    also includes the metadata similar to get folder by id, get folder by
+                    name, and browse folders.
         """
         call = "rest/asset/v1/folders.json?name="+name+"&parent="+parent
         method = "POST"
@@ -1656,8 +1630,8 @@ class MarketoWrapper:
         This method deletes the folder with the given id.
         
         Args:
-            folder_id (int):    	The id of the folder to be deleted
-			folder_type (string):	Type of folder. Either "Folder" or "Program"
+            folder_id (int):        The id of the folder to be deleted
+            folder_type (string):   Type of folder. Either "Folder" or "Program"
             
         Returns:
             dict:   The response from the server indicating success or failure. 
@@ -1674,15 +1648,15 @@ class MarketoWrapper:
         
         Args:
             folder_id (int):                The id of the folder to be deleted
-			folder_type (string):			Type of folder. Either "Folder" or "Program"
+            folder_type (string):           Type of folder. Either "Folder" or "Program"
             description (string, optional): The updated folder description
             name (string, optional):        The updated name of the folder
             is_archive (boolean, optional): Whether or not the folder should be archived.
             
         Returns:
             dict:   The response from the server that indicates success or failure. It
-					also includes the metadata similar to get folder by id, get folder by
-					name, and browse folders.
+                    also includes the metadata similar to get folder by id, get folder by
+                    name, and browse folders.
         """
         call = "rest/asset/v1/folder/"+folder_id+".json"
         method = "POST"
@@ -1706,18 +1680,18 @@ class MarketoWrapper:
         This method creates a token at the folder level or the program level.
         
         Args:
-            parent_id (int):    	The id of the folder/program to place the token in
-			folder_type (string):	Type of parent folder. Either "Folder" or "Program"
-            token_type (string):	The type of the token. See below for list of types.
-            name (string):      	The name of the token
-            value (string):     	The value of the token. If it is a date token, it must
-                                	be in the format yyyy-mm-dd. If it is a score, it must
-                                	be preceeded by a +, - or = to indicate a score increment,
-                                	decrement, or reset respectively.
+            parent_id (int):        The id of the folder/program to place the token in
+            folder_type (string):   Type of parent folder. Either "Folder" or "Program"
+            token_type (string):    The type of the token. See below for list of types.
+            name (string):          The name of the token
+            value (string):         The value of the token. If it is a date token, it must
+                                    be in the format yyyy-mm-dd. If it is a score, it must
+                                    be preceeded by a +, - or = to indicate a score increment,
+                                    decrement, or reset respectively.
             
         Returns:
             dict:   The response from the server that includes the calculated URL of 
-					the new token.
+                    the new token.
             
         Available Data Types:
         
@@ -1732,28 +1706,28 @@ class MarketoWrapper:
         
         *Types are case sensitive
         """
-        call = "rest/asset/v1/folder/"+parent_id+"/tokens.json"
+        call = "rest/asset/v1/folder/"+str(parent_id)+"/tokens.json"
         method = "POST"
-#        payload = { "folderType": parent_type,
-#                    "type": type,
-#                    "name": name,
-#                    "value": value}
-#        return self.__generic_api_call(call, method, payload=json.dumps(payload))
-#        payload = "folderType="+parent_type+"&type="+type+"&name="+name+"&value="+value
-#        return self.__generic_api_call(call, method, payload=payload)
+        # payload = { "folderType": folder_type,
+        #            "type": token_type,
+        #            "name": name,
+        #            "value": value}
+        # return self.__generic_api_call(call, method, payload=json.dumps(payload))
+        payload = "folderType="+folder_type+"&type="+token_type+"&name="+name+"&value="+value
+        return self.__generic_api_call(call, method, payload=payload, content_type='application/x-www-form-urlencoded')
         
     def get_tokens(self, parent_id, folder_type):
         """
         This method lists all of the tokens under a folder/program
         
         Args:
-            parent_id (int):    	The id of the folder/program where the tokens
-                                	are located.
-			folder_type (string):	Type of parent folder. Either "Folder" or "Program".
+            parent_id (int):        The id of the folder/program where the tokens
+                                    are located.
+            folder_type (string):   Type of parent folder. Either "Folder" or "Program".
             
         Returns:
             dict:   The response from the server that includes the folder id and name, and 
-					the token metadata.
+                    the token metadata.
         """
         call = "rest/asset/v1/folder/"+str(parent_id)+"/tokens.json"
         method = "GET"
@@ -1764,10 +1738,10 @@ class MarketoWrapper:
         This method deletes a token from a folder/program.
         
         Args:
-            parent_id (int):    	The id of the folder/program where the token is.
-            folder_type (string):	Type of parent folder. Either "Folder" or "Program"/
-            name (string):      	The name of the token
-			type (string):      	The type of the token. See below for list of types.
+            parent_id (int):        The id of the folder/program where the token is.
+            folder_type (string):   Type of parent folder. Either "Folder" or "Program"/
+            name (string):          The name of the token
+            type (string):          The type of the token. See below for list of types.
             
         Returns:
             dict:   The response from the server indicating success or failure.
@@ -1803,23 +1777,23 @@ class MarketoWrapper:
         from the Marketo instance.
         
         Args:
-            offset (int, optional):		Specifies the start point. Can be used in conjunction
-										with max_return to iterate through a large block of results.
-			max_return (int, optional):	The maximum number of records to return. Default is 20 max 200.
-			status (string, optional):	The status of the email asset. Either "Approved" or "Draft".
-			folder (dict, optional):	A specific folder in which to search for emails. The dictionary
-										should be of the following format:
-											{
-											 "id" : 1234,
-											 "type" : "Folder"
-											}
-										where "id" is the folder id (integer), and "type" is either 
-										"Program" or "Folder" (string).
+            offset (int, optional):     Specifies the start point. Can be used in conjunction
+                                        with max_return to iterate through a large block of results.
+            max_return (int, optional): The maximum number of records to return. Default is 20 max 200.
+            status (string, optional):  The status of the email asset. Either "Approved" or "Draft".
+            folder (dict, optional):    A specific folder in which to search for emails. The dictionary
+                                        should be of the following format:
+                                            {
+                                             "id" : 1234,
+                                             "type" : "Folder"
+                                            }
+                                        where "id" is the folder id (integer), and "type" is either 
+                                        "Program" or "Folder" (string).
             
         Returns:
             dict:   The response from the server. The "result" attribute has an array of dictionaries
-					that represent the emails. It includes id, name, subject, from name, from email, 
-					whether it is operational, whether it is published to MSI etc.
+                    that represent the emails. It includes id, name, subject, from name, from email, 
+                    whether it is operational, whether it is published to MSI etc.
         """
         call = "rest/asset/v1/emails.json"
         method = "GET"
@@ -1830,13 +1804,13 @@ class MarketoWrapper:
         This method retrieves data about an email asset given its id.
         
         Args:
-            email (int): 				The id of the desired email asset.
-			status (string, optional): 	The status of the asset. Either "Approved" or "Draft". 
+            email (int):                The id of the desired email asset.
+            status (string, optional):  The status of the asset. Either "Approved" or "Draft". 
             
         Returns:
             dict:   The response from the server. The "result" attribute has an array of dictionaries
-					that represent the email. It includes id, name, subject, from name, from email, 
-					whether it is operational, whether it is published to MSI etc.
+                    that represent the email. It includes id, name, subject, from name, from email, 
+                    whether it is operational, whether it is published to MSI etc.
         """
         call = "rest/asset/v1/email/"+str(email)+".json"
         method = "GET"
@@ -1849,9 +1823,9 @@ class MarketoWrapper:
         editable sections. HTML must be acquired using the email template API.
         
         Args:
-            email (int): 				The id of the desired email asset.
-			status (string, optional):	The status of the asset. Either "Approved" 
-										or "Draft"
+            email (int):                The id of the desired email asset.
+            status (string, optional):  The status of the asset. Either "Approved" 
+                                        or "Draft"
             
         Returns:
             dict:   The response from the server that has the values of the editable
@@ -1872,10 +1846,10 @@ class MarketoWrapper:
         This method returns a list of all email templates and their metadata.
         
         Args:
-            offset (int, optional):		Specifies the start point. Can be used in conjunction
-										with max_return to iterate through a large block of results.
-			max_return (int, optional):	The maximum number of records to return. Default is 20 max 200.
-			status (string, optional):	The status of the email asset. Either "Approved" or "Draft".
+            offset (int, optional):     Specifies the start point. Can be used in conjunction
+                                        with max_return to iterate through a large block of results.
+            max_return (int, optional): The maximum number of records to return. Default is 20 max 200.
+            status (string, optional):  The status of the email asset. Either "Approved" or "Draft".
             
         Returns:
             dict:   The response from the server. The "results" attribute is an array of dictionaries
@@ -2041,42 +2015,47 @@ class MarketoWrapper:
         payload["name"] = name
         payload["folder"] = folder
         return self.__generic_api_call(call, method, payload=json.dumps(payload))
-	
-############################################################################################		
-#                                                                                          #		
-#                                Program API Calls                                         # 		
-#                                                                                          #             		
-############################################################################################		
-    def create_program(self, parent_folder, name, program_type, channel, description, tags=None):		
-        """		
-        This method makes takes an array of dictionaries that represent all of the leads		
-        and their attributes that should be updated in Marketo. It takes that array, and		
-        does an upsert operation to the Marketo database.		
-        		
-        Args:		
-            parent_folder (mkto type/id pair):  e.g. {"type": "Folder","id": 26}		
-            		
-            name (string):                      Name of program                   		
-                                                		
-            type (string):                      New Program type, e.g. "Default"		
-            channel (string):                   New program channel, e.g. "Content"		
-            description (multipart):            Basically a description string		
-            tags (multipart, optional):         Tag list or single tag string		
-            costs (multipart, optional):        [{"startDate":"2015-06-01","cost":100,"note":"this is the cost"}]		
-                                                *Costs implemented in wiki version but not docs, may not be available		
-            		
-        Returns:		
-            dict:   A dictionary that has the completion status and program information similar to get_program.		
-        """		
-        		
-        call = "rest/asset/v1/programs.json"		
-        method = "POST"		
-        #POST PUBLIC RELEASE:		
-        #payload = "folder="+json.dumps(parent_folder)+"&name="+name+"&type="+program_type+"&description="+description+"&channel="+channel		
-        #PRE PUBLIC RELEASE:		
-        payload = "folders="+json.dumps(parent_folder)+"&programName="+name+"&programType="+program_type+"&programDescription="+description+"&programChannel="+channel		
-        if tags:		
-            payload+="&tags="+tags		
+
+############################################################################################
+#                                                                                          #
+#                                Program API Calls                                         # 
+#                                                                                          #             
+############################################################################################
+
+    def create_program(self, parent_folder, name, program_type, channel, description, tags=None):
+        """
+        This method makes takes an array of dictionaries that represent all of the leads
+        and their attributes that should be updated in Marketo. It takes that array, and
+        does an upsert operation to the Marketo database.
+        
+        Args:
+            parent_folder (mkto type/id pair):  e.g. {"type": "Folder","id": 26}
+            
+            name (string):                      Name of program                   
+                                                
+            type (string):                      New Program type, e.g. "Default"
+
+            channel (string):                   New program channel, e.g. "Content"
+
+            description (multipart):            Basically a description string
+
+            tags (multipart, optional):         Tag list or single tag string
+
+            costs (multipart, optional):        [{"startDate":"2015-06-01","cost":100,"note":"this is the cost"}]
+                                                *Costs implemented in wiki version but not docs, may not be available
+            
+        Returns:
+            dict:   A dictionary that has the completion status and program information similar to get_program.
+        """
+        
+        call = "rest/asset/v1/programs.json"
+        method = "POST"
+        #POST PUBLIC RELEASE:
+        #payload = "folder="+json.dumps(parent_folder)+"&name="+name+"&type="+program_type+"&description="+description+"&channel="+channel
+        #PRE PUBLIC RELEASE:
+        payload = "folders="+json.dumps(parent_folder)+"&programName="+name+"&programType="+program_type+"&programDescription="+description+"&programChannel="+channel
+        if tags:
+            payload+="&tags="+tags
         return self.__generic_api_call(call, method, payload=payload, content_type='application/x-www-form-urlencoded')
     
 ############################################################################################
@@ -2161,120 +2140,9 @@ if __name__ == "__main__":
     client_id = settings.CLIENT_ID
     client_secret = settings.CLIENT_SECRET
     marketo = MarketoWrapper(munchkin, client_id, client_secret)
-    
-#########################################################################################
-#                                                                                       #
-#                                   Update Leads                                        #
-#                                                                                       #
-#########################################################################################
-    
-#    with open("Trello/Carter/update100k.json") as leads:
-#        lead_list = leads.readlines()
-#        lead_list = list(map(json.loads, lead_list))
-#        
-#    jj = 0
-#    start = time.time()
-#    
-#    for ii in range(300, len(lead_list), 300):
-#        result = marketo.create_update_leads(lead_list[jj:ii], lookup_field="id", partition="Implementation")
-#        if result["success"] != True:
-#            print(json.dumps(result))
-##        time.sleep(0.2)
-#        jj = ii
-#        
-#    execution_time = time.time() - start
-#    
-#    print("Execution time for 100k net new inserts into Marketo: "+str(execution_time)+" seconds")
-#    print("Total number of leads inserted: "+str(len(lead_list)))
-#    print("Sample JSON from a single lead record:\n"+json.dumps(lead_list[1]))
-
-#########################################################################################
-#                                                                                       #
-#                               Login Activities                                        #
-#                                                                                       #
-#########################################################################################
-#    with open("Trello/Carter/login-activities.json") as logins:
-#        lactivities = logins.readlines()
-#        lactivities = list(map(json.loads, lactivities))
-#    
-##    output = {"num_requests": 1000, "batch_size": 1, "execution_times": [], "failures": 0, "total_time": 0,
-##             "50th": 0, "90th": 0, "95th": 0}
-#    output = {"num_requests": 500, "batch_size": 10, "execution_times": [], "failures": 0, "total_time": 0,
-#             "50th": 0, "90th": 0, "95th": 0}
-#    jj=0
-#    start_time = time.time()
-##    for ii in range(1000): Batch Size 1
-#    for ii in range(100, 50000, 100):
-#        call_time = time.time()
-##        result = marketo.add_lead_activities(list([lactivities[ii]])) Batch Size 1
-#        result = marketo.add_lead_activities(lactivities[jj:ii])
-#        output["execution_times"].append(time.time()-call_time)
-#        if not result["success"]:
-#            output["failures"] += 1
-#        jj=ii    
-#
-#    output["total_time"] = time.time()-start_time
-#    output["execution_times"] = sorted(output["execution_times"])
-#    output["execution_times"] = list(map(convert_to_ms, output["execution_times"]))
-#    output["50th"] = output["execution_times"][int(len(output["execution_times"])/2)]
-#    output["90th"] = output["execution_times"][int(len(output["execution_times"])*0.9)]
-#    output["95th"] = output["execution_times"][int(len(output["execution_times"])*0.95)]
-#    with open("Trello/activities.json", "a") as logs:
-#        logs.write(json.dumps(output))
-
-#########################################################################################
-#                                                                                       #
-#                              Invite Activities                                        #
-#                                                                                       #
-#########################################################################################
-#    with open("Trello/Carter/invite-activities.json") as invites:
-#        iactivities = invites.readlines()
-#        iactivities = list(map(json.loads, iactivities))
-#    jj=0
-#    for ii in range(300, len(iactivities), 300):
-#        print("Processing...")
-#        print(marketo.add_lead_activities(iactivities[jj:ii]))
-#        print("Going to next iteration...")
-#        jj=ii
-#########################################################################################
-#                                                                                       #
-#                            Add Team Member Activities                                 #
-#                                                                                       #
-#########################################################################################
-#    with open("Trello/Carter/add-team-member-activities.json") as adds:
-#        aactivities = adds.readlines()
-#        aactivities = list(map(json.loads, aactivities))
-#    jj=0
-#    iteration=0
-#    for ii in range(300, len(aactivities), 300):
-#        iteration += 1
-#        print("Processing... "+str(iteration))
-#        marketo.add_lead_activities(aactivities[jj:ii])
-#        jj=ii
-
-#########################################################################################
-#                                                                                       #
-#                            Add Team Member Activities                                 #
-#                                                                                       #
-#########################################################################################
-#    with open("Trello/Carter/joined-board-activities.json") as joins:
-#        jactivities = joins.readlines()
-#        jactivities = list(map(json.loads, jactivities))
-#    jj=0
-#    iteration=0
-#    for ii in range(300, len(jactivities), 300):
-#        iteration += 1
-#        print("Processing... "+str(iteration))
-#        marketo.add_lead_activities(jactivities[jj:ii])
-#        jj=ii    
-
-#########################################################################################
-#                                                                                       #
-#                                  Generic Tests                                        #
-#                                                                                       #
-#########################################################################################
+        
 #    print(marketo.get_lead_by_id("5"))
-#    print(marketo.get_multiple_leads_by_list_id(1013, batch_size=1))
+    print(marketo.get_multiple_leads_by_list_id(1013, batch_size=1))
 
 #    print(marketo.get_email_content_by_id(1108))
 
@@ -2296,5 +2164,3 @@ if __name__ == "__main__":
 
 #    print (marketo.get_tokens(129))
 #    print (marketo.create_token("1083", "Program", "text", "api token", "Hello there!"))
-
-    print("Success!")
