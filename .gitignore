@@ -6,7 +6,15 @@ mongodb_setup/
 mongo_wrapper.py
 marketo_connector.py
 settings.py
-
+Trello/
+*.csv
+*.xlsx
+trello*
+*.html
+csv*
+*.json
+field_mapper.py
+*.min.js
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
